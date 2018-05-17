@@ -1,11 +1,17 @@
 ---
 title: "W271 Lab 1"
-author: "Tiffany Jaya"
-date: \today
-output: pdf_document
+author: "Robert Deng, Shan He, Joanna Huang, Tiffany Jaya"
+date: "6/3/2018"
+output: pdf_document:
+  toc: true
+  number_sections: true
+fontsize: 11pt
+geometry: margin=1in
 ---
 
 ```{r setup, include=FALSE}
 library(knitr)
 opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
 ```
+
+
