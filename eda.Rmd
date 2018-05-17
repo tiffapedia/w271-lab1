@@ -1,0 +1,26 @@
+---
+title: "EDA"
+author: "Tiffany Jaya"
+date: \today
+output: pdf_document
+---
+
+# Load the libraries
+
+```{r}
+library(dplyr)
+```
+
+# Load the dataset
+
+```{r}
+d <- read.csv(file = "./dataset/challenger.csv",
+              header = TRUE, 
+              sep = ",")
+```
+
+```{r}
+summary(d)
+```
+
+# Analysis 
