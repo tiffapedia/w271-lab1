@@ -1,0 +1,11 @@
+---
+title: "W271 Lab 1"
+author: "Tiffany Jaya"
+date: \today
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
