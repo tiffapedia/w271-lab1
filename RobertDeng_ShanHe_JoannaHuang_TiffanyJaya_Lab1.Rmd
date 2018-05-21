@@ -118,8 +118,54 @@ summary(challenger.glm.temp)
 ```
 
 (b) Construct two plots: (1) ⇡ vs. Temp and (2) Expected number of failures vs. Temp. Use a temperature range of 31  to 81  on the x-axis even though the minimum temperature in the data set was 53.\
+```{r}
+# Find the observed proportion of failure at each Temp
+w <- aggregate(formula = Fail ~ Temp, data = challenger, FUN = sum)
+n <- aggregate(formula = Fail ~ Temp, data = challenger, FUN = length)
+w.n <- data.frame(Temp = w$Temp, success = w$Fail,
+                  trials = n$Fail, proportion = round(w$Fail/n$Fail, 4))
+head(w.n)
+```
+```{r}
+# Plot of the observed proportions with logistic regression model
+
+plot(x = w$Temp, y = w$Fail/n$Fail, xlab = "Temperature", ylab = "Estimated Probability of Failure",
+     panel.first = grid(col="gray", lty = "dotted"), main = '(1) ⇡ vs. Temp')
+
+# Put estimated logistic regression model on the plot
+curve(expr = predict(object = challenger.glm.temp, newdata = data.frame(Temp = x), type = "response"),
+                                                                        add = TRUE,
+                                                                        xlim = c(31,81))
+```
+
 (c) Include the 95% Wald confidence interval bands for ⇡ on the plot. Why are the bands much wider for lower temperatures than for higher temperatures?\
-(d) The temperature was 31  at launch for the Challenger in 1986. Estimate the probability of an O-ring failure using this temperature, and compute a corre- sponding confidence interval. Discuss what assumptions need to be made in order to apply the inference procedures.\
+```{r}
+plot(x = w$Temp, y = w$Fail/n$Fail, xlab = "Temperature", ylab = "Estimated Probability of Failure",
+     panel.first = grid(col="gray", lty = "dotted"), main = '⇡ vs. Temp with C.I. Bands')
+
+# Put estimated logistic regression model on the plot
+curve(expr = predict(object = challenger.glm.temp, newdata = data.frame(Temp = x), type = "response"),
+                                                                        add = TRUE,
+                                                                        xlim = c(31,81))
+
+# Create C.I. function
+conf.int <- function(newdata, mod, alpha){
+  linear.pred <- predict(object = mod, newdata= newdata, type = 'link', se = TRUE)
+  CI.lin.pred.lower <- linear.pred$fit - qnorm(p = 1-alpha/2) * linear.pred$se
+  CI.lin.pred.upper <- linear.pred$fit + qnorm(p = 1-alpha/2) * linear.pred$se
+  CI.pi.lower <- exp(CI.lin.pred.lower) / (1+exp(CI.lin.pred.lower))
+  CI.pi.upper <- exp(CI.lin.pred.upper) / (1+exp(CI.lin.pred.upper))
+  list(lower = CI.pi.lower, upper = CI.pi.upper)
+}
+
+# Add 95% Wald C.I. bands
+curve(expr = conf.int(newdata=data.frame(Temp=x), mod = challenger.glm.temp, alpha = 0.05)$lower,
+                      col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
+curve(expr = conf.int(newdata=data.frame(Temp=x), mod = challenger.glm.temp, alpha = 0.05)$upper,
+                      col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
+```
+
+(d) The temperature was 31  at launch for the Challenger in 1986. Estimate the probability of an O-ring failure using this temperature, and compute a corresponding confidence interval. Discuss what assumptions need to be made in order to apply the inference procedures.\
 (e) Rather than using Wald or profile LR intervals for the probability of failure, Dalal et al. (1989) use a parametric bootstrap to compute intervals. Their process was to (1) simulate a large number of data sets (n = 23 for each) from the estimated model of logit(⇡ˆ) =  ˆ0 +  ˆ1Temp; (2) estimate new models for each data set, say logit(⇡ˆ?) =  ˆ0? +  ˆ1?Temp; and (3) compute ⇡ˆ? at a specific temperature of interest. The authors used the 0.05 and 0.95 observed quantiles from the ⇡ˆ? sim- ulated distribution as their 90% confidence interval limits. Using the parametric bootstrap, compute 90% confidence intervals separately at temperatures of 31  and 72 .27\
 (f) Determine if a quadratic term is needed in the model for the temperature.\
 
@@ -130,8 +176,6 @@ summary(challenger.glm.temp)
 
 # Conclusion
  * A conclusion that summarize the final result with respect to the question(s) being asked and key takeaways from the analysis.
-
-
 
 
 
