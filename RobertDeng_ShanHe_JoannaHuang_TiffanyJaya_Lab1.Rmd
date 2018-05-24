@@ -32,8 +32,7 @@ Variables in the dataset:
 • Number: Total number of primary field O-rings (six total, three each for the two booster rockets)
 
 ```{r}
-setwd("/Users/arthur/Downloads/w271_Lab1_2018Summer")
-challenger <- read.table(file = "challenger.csv", header=TRUE, sep=",")
+challenger <- read.table(file = "./dataset/challenger.csv", header=TRUE, sep=",")
 summary(challenger)
 ```
 ```{r}
