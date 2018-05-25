@@ -1,0 +1,11 @@
+---
+title: "Lab 1 Script"
+author: "Robert Deng, Tiffany Jaya, Shan He, Joanna Huang"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+  toc: true
+  number_sections: true
+fontsize: 11pt
+geometry: margin=1in
+---
