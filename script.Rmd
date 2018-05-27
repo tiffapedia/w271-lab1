@@ -9,3 +9,77 @@ output:
 fontsize: 11pt
 geometry: margin=1in
 ---
+
+```{r}
+# Code 1
+summary(challenger)
+describe(challenger)
+ggplot(challenger, aes(x = Temp)) + geom_histogram(binwidth = 3)
+
+# list rows of data that have missing values 
+challenger[!complete.cases(challenger),] # no missing values
+
+```
+
+```{r}
+# Code 2
+ggplot(challenger, aes(x = Temp, y=O.ring)) + geom_point() + 
+  labs(title = 'Joint Temperature Versus Number of O-Ring Failures', y='Number of O-ring failures', x='Temp(F)') + 
+  theme(plot.title = element_text(lineheight=1, face="bold", color = "darkred"))
+```
+
+```{r}
+# Code 3
+ggplot(challenger, aes(x=Pressure, y=O.ring)) + geom_point() + 
+  labs(title = 'Joint Pressure Versus Number of O-Ring Failures', y='Number of O-ring failures', x='Pressure (psi') + 
+  theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
+  
+challenger %>%
+  ggplot(aes(x = factor(O.ring), fill = factor(O.ring))) +
+  geom_bar() +
+  facet_wrap(~Pressure) + 
+  labs(title = 'Count of O-Ring Failures at Pressure Levels', y='Count', x='Number of O-ring failures') + 
+  theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
+```
+
+```{r}
+# Code 4
+challenger$Fail <- ifelse(challenger$O.ring>0, 1, 0)
+head(challenger)
+
+```
+```{r}
+# Notation code - Code 5
+```
+We apply the logistic regression model to model the probability of the O-rings failing at various temperatures.
+
+$$\begin{aligned} P(Y_i = 1 | x_i) = \frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x_i}} = \pi_i \end{aligned}$$
+
+$i$: observation for a single launch
+$Y_i = 1$: failure launch, at least one O-ring failing
+$Y_i = 0$: successful launch, no O-ring failing
+$x_i$: outside temperature in degrees Fahrenheit
+
+```{r}
+# Notation code - Code 6
+```
+$H_0: \beta_1 = 0$
+
+$H_a: \beta_1 \ne 0$
+
+Null Hypothesis: outside temperature has no effect in O-rings failure
+
+Alternative Hypothesis: outside temperature has an effect in O-rings failure
+
+```{r}
+Code 7
+m0 <- glm(formula = Fail ~ 1, 
+          family = binomial,
+          data = challenger)
+m1 <- glm(formula = Fail ~ Temp, 
+          family = binomial,
+          data = challenger)
+summary(m1)
+m1.b0 <- m1$coefficients[1]
+m1.b1 <- m1$coefficients[2]
+```
