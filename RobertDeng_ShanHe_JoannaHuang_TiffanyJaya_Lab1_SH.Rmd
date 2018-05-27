@@ -200,35 +200,6 @@ pi.31.upper
 ```
 (e) Rather than using Wald or profile LR intervals for the probability of failure, Dalal et al. (1989) use a parametric bootstrap to compute intervals. Their process was to (1) simulate a large number of data sets (n = 23 for each) from the estimated model of logit(⇡ˆ) =  ˆ0 +  ˆ1Temp; (2) estimate new models for each data set, say logit(⇡ˆ?) =  ˆ0? +  ˆ1?Temp; and (3) compute ⇡ˆ? at a specific temperature of interest. The authors used the 0.05 and 0.95 observed quantiles from the ⇡ˆ? sim- ulated distribution as their 90% confidence interval limits. Using the parametric bootstrap, compute 90% confidence intervals separately at temperatures of 31  and 72 .27\
 
-```{r}
-library(purrr) #for map function
-coefficients(challenger.glm.temp)
-
-
-bootstrap_coef <- function(data, model, pred_temp) {
-  #sample temp with replacement
-  sample_temp <- sample(x = data, size = 23, replace = TRUE)
-  #find predicted probability
-  sample_preds <-predict(object = model, newdata = data.frame(Temp = sample_temp), type = "response")
-
-  #build a dataframe
-  df <- data.frame(temp = sample_temp, 
-             prob_pred = sample_preds
-             )
-  
-  #map function to find predicted class (fail or not fail)
-  df$fail_pred <- unlist(lapply(X = df$prob_pred, FUN = function(x) rbinom(1, 1, x)))
-  
-  #build glm model
-  bootstrap_glm <- glm(formula = fail_pred ~ temp, family = binomial(link=logit), data = df)
-  
-  #predict probability at pred_temp
-  predict(object = bootstrap_glm, newdata = data.frame(temp = pred_temp), type = "response")
-}
-
-replicate(10000, bootstrap_coef(challenger$Temp, challenger.glm.temp, 31), simplify = FALSE)
-
-replicate(10000, bootstrap_coef(challenger$Temp, challenger.glm.temp, 72), simplify = FALSE)
 ```
 
 
