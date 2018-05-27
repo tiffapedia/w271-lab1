@@ -226,9 +226,9 @@ bootstrap_coef <- function(data, model, pred_temp) {
   predict(object = bootstrap_glm, newdata = data.frame(temp = pred_temp), type = "response")
 }
 
-replicate(1000, bootstrap_coef(challenger$Temp, challenger.glm.temp, 31), simplify = FALSE)
+replicate(10000, bootstrap_coef(challenger$Temp, challenger.glm.temp, 31), simplify = FALSE)
 
-replicate(1000, bootstrap_coef(challenger$Temp, challenger.glm.temp, 72), simplify = FALSE)
+replicate(10000, bootstrap_coef(challenger$Temp, challenger.glm.temp, 72), simplify = FALSE)
 ```
 
 
