@@ -26,16 +26,14 @@ The failure of an O-ring on the space shuttle Challenger’s booster rockets led
 
 Variables in the dataset:
 • Flight: Flight number
-• Temp: Temperature (F) at launch
-• Pressure: Combustion pressure (psi)
+• Temp: Outside temperature in Fahrenheit at launch
+• Pressure: Combustion pressure in psi
 • O.ring: Number of primary field O-ring failures
 • Number: Total number of primary field O-rings (six total, three each for the two booster rockets)
 
 ```{r}
-#setwd("/Users/arthur/Downloads/w271_Lab1_2018Summer")
-setwd("~/Google Drive/Data Science/W271/Lab1/")
 library(Hmisc)
-challenger <- read.csv(file ="~/Google Drive/Data Science/W271/Lab1/dataset/challenger.csv", header=TRUE, sep=",")
+challenger <- read.csv(file ="./dataset/challenger.csv", header=TRUE, sep=",")
 summary(challenger)
 describe(challenger)
 ggplot(challenger, aes(x = Temp)) + geom_histogram(binwidth = 3)
@@ -43,7 +41,7 @@ ggplot(challenger, aes(x = Temp)) + geom_histogram(binwidth = 3)
 
 ```{r}
 # list rows of data that have missing values 
-challenger[!complete.cases(challenger),] # no missing values
+d[!complete.cases(d),] # no missing values
 ```
 
 **There is a total of 23 data points in this dataset. As mentioned in the article, there were 24 launches prior to Challenger but one flight lost its motors at sea, thus we end up with 23 flights with motor data recorded here. All space shuttles have a total numebr of 6 primary field O-rings, so the Number column can be removed. No columns have any abnormal values.**
@@ -68,7 +66,7 @@ ggplot(challenger, aes(x = Temp, y=O.ring)) + geom_point() +
 library(ggplot2)
 library(dplyr)
 # temperature by o-ring failure
-ggplot(challenger, aes(factor(O.ring), Temp)) +
+ggplot(d, aes(factor(O.ring), Temp)) +
   geom_boxplot(aes(fill = factor(O.ring))) + 
   geom_jitter() +
   ggtitle("Temperature by O-Ring Failure") + 
@@ -92,7 +90,7 @@ challenger %>%
 ```{r}
 #Bobby: Don't think this is very telling
 # pressure by o-ring failure
-ggplot(challenger, aes(factor(O.ring), Pressure)) +
+ggplot(d, aes(factor(O.ring), Pressure)) +
   geom_boxplot(aes(fill = factor(O.ring))) + 
   geom_jitter() +
   ggtitle("Pressure by O-Ring Failure") + 
@@ -115,18 +113,19 @@ The response variable is O.ring, and the explanatory variables are Temp and Pres
 (b) Estimate the logistic regression model using the explanatory variables in a linear form.\
 **Since we are interested in examining the probability of an O-ring failure, regardless of how many O-rings failed, we can include an additional column in the data with a value of 1 if O-ring failure !=0 and 0 if it does.**\
 ```{r}
-challenger$Fail <- ifelse(challenger$O.ring>=1, 1, 0)
-head(challenger)
+d$Fail <- ifelse(d$O.ring>=1, 1, 0)
+head(d)
 ```
 
 ```{r}
-challenger.glm <- glm(Fail ~ Temp + Pressure, 
-               family = binomial, data = challenger)
-summary(challenger.glm)
+d.glm <- glm(Fail ~ Temp + Pressure, 
+               family = binomial, data = d)
+summary(d.glm)
 ```
 
 (c) Perform LRTs to judge the importance of the explanatory variables in the model.
 ```{r}
+
 challenger.glm.H0 <- glm(Fail ~ Temp, family = binomial, data=challenger)
 summary(challenger.glm.H0)
 anova(challenger.glm.H0, challenger.glm, test='Chisq')
@@ -134,7 +133,7 @@ anova(challenger.glm.H0, challenger.glm, test='Chisq')
 
 ```{r}
 library(car)
-Anova(mod = challenger.glm, test = 'LR')
+Anova(mod = d.glm, test = 'LR')
 ```
 
 (d) The authors chose to remove Pressure from the model based on the LRTs. Based on your results, discuss why you think this was done. Are there any potential problems with removing this variable?\
@@ -146,15 +145,15 @@ Anova(mod = challenger.glm, test = 'LR')
 
 (a) Estimate the model.
 ```{r}
-challenger.glm.temp <- glm(formula = Fail ~ Temp, family = binomial(link=logit), data = challenger)
-summary(challenger.glm.temp)
+d.glm.temp <- glm(formula = Fail ~ Temp, family = binomial(link=logit), data = d)
+summary(d.glm.temp)
 ```
 
 (b) Construct two plots: (1) $\pi$ vs. Temp and (2) Expected number of failures vs. Temp. Use a temperature range of 31  to 81  on the x-axis even though the minimum temperature in the data set was 53.\
 ```{r}
 # Find the observed proportion of failure at each Temp
-w <- aggregate(formula = Fail ~ Temp, data = challenger, FUN = sum)
-n <- aggregate(formula = Fail ~ Temp, data = challenger, FUN = length)
+w <- aggregate(formula = Fail ~ Temp, data = d, FUN = sum)
+n <- aggregate(formula = Fail ~ Temp, data = d, FUN = length)
 w.n <- data.frame(Temp = w$Temp, success = w$Fail,
                   trials = n$Fail, proportion = round(w$Fail/n$Fail, 4))
 head(w.n)
@@ -166,7 +165,7 @@ plot(x = w$Temp, y = w$Fail/n$Fail, xlab = "Temperature", ylab = "Estimated Prob
      panel.first = grid(col="gray", lty = "dotted"), main = '(1) ⇡ vs. Temp')
 
 # Put estimated logistic regression model on the plot
-curve(expr = predict(object = challenger.glm.temp, newdata = data.frame(Temp = x), type = "response"),
+curve(expr = predict(object = d.glm.temp, newdata = data.frame(Temp = x), type = "response"),
                                                                         add = TRUE,
                                                                         xlim = c(31,81))
 ```
@@ -177,7 +176,7 @@ plot(x = w$Temp, y = w$Fail/n$Fail, xlab = "Temperature", ylab = "Estimated Prob
      panel.first = grid(col="gray", lty = "dotted"), main = '⇡ vs. Temp with C.I. Bands')
 
 # Put estimated logistic regression model on the plot
-curve(expr = predict(object = challenger.glm.temp, newdata = data.frame(Temp = x), type = "response"),
+curve(expr = predict(object = d.glm.temp, newdata = data.frame(Temp = x), type = "response"),
                                                                         add = TRUE,
                                                                         xlim = c(31,81))
 
@@ -192,9 +191,9 @@ conf.int <- function(newdata, mod, alpha){
 }
 
 # Add 95% Wald C.I. bands
-curve(expr = conf.int(newdata=data.frame(Temp=x), mod = challenger.glm.temp, alpha = 0.05)$lower,
+curve(expr = conf.int(newdata=data.frame(Temp=x), mod = d.glm.temp, alpha = 0.05)$lower,
                       col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
-curve(expr = conf.int(newdata=data.frame(Temp=x), mod = challenger.glm.temp, alpha = 0.05)$upper,
+curve(expr = conf.int(newdata=data.frame(Temp=x), mod = d.glm.temp, alpha = 0.05)$upper,
                       col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
 ```
 
