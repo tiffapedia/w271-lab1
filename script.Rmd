@@ -72,7 +72,7 @@ Null Hypothesis: outside temperature has no effect in O-rings failure
 Alternative Hypothesis: outside temperature has an effect in O-rings failure
 
 ```{r}
-Code 7
+# Code 7
 m0 <- glm(formula = Fail ~ 1, 
           family = binomial,
           data = challenger)
@@ -82,4 +82,37 @@ m1 <- glm(formula = Fail ~ Temp,
 summary(m1)
 m1.b0 <- m1$coefficients[1]
 m1.b1 <- m1$coefficients[2]
+```
+
+```{r}
+# Code 8
+# bootstrap for 5(e)
+
+bootstrap_coef <- function(data, model, pred_temp) {
+  #sample temp with replacement
+  sample_temp <- sample(x = data, size = 23, replace = TRUE)
+  #find predicted probability
+  sample_preds <-predict(object = model, newdata = data.frame(Temp = sample_temp), type = "response")
+
+  #build a dataframe
+  df <- data.frame(temp = sample_temp, 
+             prob_pred = sample_preds
+             )
+  
+  #map function to find predicted class (fail or not fail)
+  df$fail_pred <- unlist(lapply(X = df$prob_pred, FUN = function(x) rbinom(1, 1, x)))
+  
+  #build glm model
+  bootstrap_glm <- glm(formula = fail_pred ~ temp, family = binomial(link=logit), data = df)
+  
+  #predict probability at pred_temp
+  predict(object = bootstrap_glm, newdata = data.frame(temp = pred_temp), type = "response")
+}
+
+est_prob_31 <- replicate(10000, bootstrap_coef(challenger$Temp, m1, 31), simplify = FALSE)
+
+est_prob_72 <- replicate(10000, bootstrap_coef(challenger$Temp, m1, 72), simplify = FALSE)
+
+quantile(unlist(est_prob_31), c(.05, .95))
+quantile(unlist(est_prob_72), c(.05, .95))
 ```
