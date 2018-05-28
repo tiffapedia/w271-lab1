@@ -62,7 +62,7 @@ ggplot(d, aes(x=Temp, y=O.ring)) +
 # + theme(plot.title = element_text(lineheight=1, face="bold", color = "darkred"))
 ```
 
-# Code 3
+# Code 3: (TODO)
 
 ```{r}
 ggplot(d, aes(x=Pressure, y=O.ring)) + geom_point() + 
@@ -77,25 +77,49 @@ d %>%
   theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
 ```
 
-# Code 4: create a binary response variable that indicates if there was a failure in flight
+
+
+# Code 4A: linear regression model 
 
 ```{r}
-d$Fail <- ifelse(d$O.ring>0, 1, 0)
+l1 <- lm(formula = O.ring > 0 ~ Temp,
+        data = d)
+summary(l1)
 ```
 
-# Code 5: model binomial model 
+```{r}
+predict(l1, data.frame(Temp = 31), type='response')
+```
 
-We apply the logistic regression model to model the probability of the O-rings failing at various temperatures.
+```{r}
+plot(d$Temp, d$O.ring, pch = 20, 
+     xlab="Temperature (F)", ylab="Number of O-Ring Failures")
+abline(reg=l1, col = "red", lwd = 2)
+l1.predict <- predict(l1, data.frame(Temp=x), interval="predict")
+lines(x, l1.predict[,2], lty=2, col="red")
+lines(x, l1.predict[,3], lty=2, col="red")
+```
 
-$$\begin{aligned} P(Y_i = 1 | x_i) = \frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x_i}} = \pi_i \end{aligned}$$
+# Code 5A: binary logistic regression model 
+
+
+# Code 5B: hypothesis of binary logistic regression model 
+
+
+# Code 6A: binomial model 
+
+We apply the logistic regression model to model the probability of the O-rings failure at various temperatures.
+
+$$\begin{aligned} 
+P(Y_i = 1 | x_i) = \frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x_i}} = \pi_i 
+\end{aligned}$$
 
 $i$: observation for a single launch
-$Y_i = 1$: failure launch, at least one O-ring failing
-$Y_i = 0$: successful launch, no O-ring failing
+$Y_i = 1$: failure launch, at least one O-ring failure
+$Y_i = 0$: successful launch, no O-ring failure
 $x_i$: outside temperature in degrees Fahrenheit
 
-
-# Code 6
+# Code 6B: hypothesis of binomial model 
 
 $H_0: \beta_1 = 0$
 
@@ -105,18 +129,88 @@ Null Hypothesis: outside temperature has no effect in O-rings failure
 
 Alternative Hypothesis: outside temperature has an effect in O-rings failure
 
-# Code 7
+# Code 6C: fitting the model
 
 ```{r}
-m0 <- glm(formula = O.ring > 0 ~ 1, 
+bm0 <- glm(formula = O.ring > 0 ~ 1, 
           family = binomial,
           data = d)
-m1 <- glm(formula = O.ring > 0 ~ Temp, 
+bm1 <- glm(formula = O.ring > 0 ~ Temp, 
           family = binomial,
           data = d)
-summary(m1)
-m1.b0 <- m1$coefficients[1]
-m1.b1 <- m1$coefficients[2]
+summary(bm1)
+bm1.b0 <- bm1$coefficients[1]
+bm1.b1 <- bm1$coefficients[2]
+```
+
+$$\begin{aligned}
+P(Y_i = 1 | x_i) & = \frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x_i}} \\
+                 & \approx \frac{e^{15.0429 - 0.232 x_i}}{1 + e^{15.0429 - 0.232 x_i}} 
+                 = \hat{\pi_i}
+\end{aligned}$$
+
+
+
+# Code 6D: Likelihood Ratio Test (LRT) to determine if Temp was a statistically significant addition to model
+
+```{r}
+#pchisq(-2 * (logLik(m0) - logLik(m1)), df=1, lower.tail=FALSE)
+anova(m0, m1, test="Chi")
+```
+
+# Code 6E: concluding remakrs about binomial model 
+
+With p-value = 0.0320, there is enough evidence to reject the null hypothesis and conclude that outside temperature has an effect in o-ring failure.
+
+## p-value
+
+With p-value = 0.0320, there is enough evidence to reject the null hypothesis and conclude that outside temperature has an effect in o-ring failure.
+
+## Interpret the main result of your final model in terms of both odds and probability of failure.
+
+### 1. odds
+
+```{r}
+# for every 1 F increase, odds of the o-rings failing decreases by a factor of 
+exp(m1.b1)
+# for every 1 F decrease, odds of the o-ring failing increases by a factor of 
+exp(-m1.b1)
+```
+
+For every 1 degree Fahrenheit increase in temperature, the odds of the O-rings failing for a given launch decreases by a factor of 0.79. 
+
+For every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by a factor of 1.26. 
+
+```{r}
+# for every 1 F increase, odds of the o-rings failing decreases by ... % 
+100 * (exp(m1.b1) - 1)
+# for every 1 F decrease, odds of the o-rings failing increases by ... % 
+100 * (exp(-m1.b1) - 1)
+```
+
+For every 1 degree Fahrenheit increase in temperature, the odds of the O-rings failing for a given launch decreases by 20%. 
+
+For every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26%. 
+
+### 2. probability of failure
+
+Since the Challenger shuttle was launched at 31 F, the proability of O-rings failing based on our logistic regression model is approximately $\hat{\pi_i} \approx 0.99.$
+
+```{r}
+predict(m1, data.frame(Temp = 31), type='response')
+```
+
+If they have waited until 53 F as suggested, the probability of O-rings failing based on our logistic regression model is approximately 0.94. 
+
+```{r}
+predict(m1, data.frame(Temp = 53), type='response')
+```
+
+This would have decreased the odds of a failure by a factor of 0.006. 
+
+```{r}
+# If launched at 53 F instead of 31, it would have decreased odds of failure by a factor of
+exp(m1.b1  * (53 - 31))
 ```
 
 # Code 2B: plotting figure 4, joint temperature versus number of O-rings failure incidents with binary and binomial model
@@ -130,6 +224,10 @@ plot(main='Joint Temperature vs Number of O-rings Failure Incidents',
      panel.first=grid(col="gray", lty="dotted"), pch=20)
 abline(h=0)
 axis(side=2, at=0:2)
+curve(exp(bm1.b0 + bm1.b1*x)/(1 + exp(bm1.b0 + bm1.b1*x)), 
+      from = min(d$Temp),
+      to = max(d$Temp), 
+      add = TRUE)
 ```
 
 
@@ -178,9 +276,9 @@ bootstrap_coef <- function(data, model, pred_temp) {
   predict(object = bootstrap_glm, newdata = data.frame(temp = pred_temp), type = "response")
 }
 
-est_prob_31 <- replicate(10000, bootstrap_coef(challenger$Temp, m1, 31), simplify = FALSE)
+est_prob_31 <- replicate(10000, bootstrap_coef(d$Temp, m1, 31), simplify = FALSE)
 
-est_prob_72 <- replicate(10000, bootstrap_coef(challenger$Temp, m1, 72), simplify = FALSE)
+est_prob_72 <- replicate(10000, bootstrap_coef(d$Temp, m1, 72), simplify = FALSE)
 
 quantile(unlist(est_prob_31), c(.05, .95))
 quantile(unlist(est_prob_72), c(.05, .95))
