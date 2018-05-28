@@ -14,6 +14,7 @@ geometry: margin=1in
 
 ```{r}
 # add packages
+library(dplyr)
 library(ggplot2)
 library(knitr)
 # prevent source code from running off the page
@@ -41,11 +42,18 @@ d[!complete.cases(d),] # no missing values
 ##  Using plot
 
 ```{r}
+# average temperature for flights with at least one O-rings failure
+avg.temp.failure <- d %>% filter(., O.ring > 0) %>% .$Temp %>% mean(.)
+# average temperature for flights with no O-rings failure
+avg.temp.success <- d %>% filter(., O.ring == 0) %>% .$Temp %>% mean(.)
+# average temperature for all flights
+avg.temp <- mean(d$Temp)
+# plot joint temperature vs number of O-rings failure incidents
 plot(main='Joint Temperature vs Number of O-rings Failure Incidents',
      x=d$Temp, xlab='Temperature (F)', xlim=c(50,80),
      y=d$O.ring, ylab='Number of O-rings Failure', yaxt='n', 
      panel.first=grid(col="gray", lty="dotted"), pch=20)
-abline(h=0)
+abline(h=0, v=c(avg.temp.failure, avg.temp.success, avg.temp), col=c('black', 'red', 'green', 'gray'))
 axis(side=2, at=0:2)
 ```
 
@@ -149,13 +157,11 @@ P(Y_i = 1 | x_i) & = \frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x
                  = \hat{\pi_i}
 \end{aligned}$$
 
-
-
 # Code 6D: Likelihood Ratio Test (LRT) to determine if Temp was a statistically significant addition to model
 
 ```{r}
-#pchisq(-2 * (logLik(m0) - logLik(m1)), df=1, lower.tail=FALSE)
-anova(m0, m1, test="Chi")
+#pchisq(-2 * (logLik(bm0) - logLik(bm1)), df=1, lower.tail=FALSE)
+anova(bm0, bm1, test="Chi")
 ```
 
 # Code 6E: concluding remakrs about binomial model 
@@ -164,11 +170,19 @@ With p-value = 0.0320, there is enough evidence to reject the null hypothesis an
 
 ## p-value
 
-With p-value = 0.0320, there is enough evidence to reject the null hypothesis and conclude that outside temperature has an effect in o-ring failure.
+With p-value = 0.0320, there is enough evidence to reject the null hypothesis and conclude that outside temperature has an effect in O-ring failure.
 
 ## Interpret the main result of your final model in terms of both odds and probability of failure.
 
 ### 1. odds
+
+**TODO: please see powerpoint**
+
+$$\begin{aligned}
+odds(x_i) & = \frac{\pi_i}{1 - \pi_i} = \frac{\frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x_i}}}{1 - \frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x_i}}} \\ 
+          & = e^{\beta_0 + \beta_1 x_i}
+\end{aligned}$$
+
 
 ```{r}
 # for every 1 F increase, odds of the o-rings failing decreases by a factor of 
@@ -183,9 +197,9 @@ For every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings f
 
 ```{r}
 # for every 1 F increase, odds of the o-rings failing decreases by ... % 
-100 * (exp(m1.b1) - 1)
+100 * (exp(bm1.b1) - 1)
 # for every 1 F decrease, odds of the o-rings failing increases by ... % 
-100 * (exp(-m1.b1) - 1)
+100 * (exp(-bm1.b1) - 1)
 ```
 
 For every 1 degree Fahrenheit increase in temperature, the odds of the O-rings failing for a given launch decreases by 20%. 
@@ -197,21 +211,28 @@ For every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings f
 Since the Challenger shuttle was launched at 31 F, the proability of O-rings failing based on our logistic regression model is approximately $\hat{\pi_i} \approx 0.99.$
 
 ```{r}
-predict(m1, data.frame(Temp = 31), type='response')
+predict(bm1, data.frame(Temp = 31), type='response')
 ```
 
 If they have waited until 53 F as suggested, the probability of O-rings failing based on our logistic regression model is approximately 0.94. 
 
 ```{r}
-predict(m1, data.frame(Temp = 53), type='response')
+predict(bm1, data.frame(Temp = 53), type='response')
 ```
 
 This would have decreased the odds of a failure by a factor of 0.006. 
 
 ```{r}
 # If launched at 53 F instead of 31, it would have decreased odds of failure by a factor of
-exp(m1.b1  * (53 - 31))
+exp(bm1.b1  * (53 - 31))
 ```
+
+The probability of all five O-rings failing is 99.8%, which is highly likely.
+
+```{r}
+predict(bm1, data.frame(Temp = 31), type='response')^5
+```
+
 
 # Code 2B: plotting figure 4, joint temperature versus number of O-rings failure incidents with binary and binomial model
 
