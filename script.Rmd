@@ -85,7 +85,24 @@ m1.b1 <- m1$coefficients[2]
 ```
 
 ```{r}
-# Code 8
+# code 8
+lp.31 <- predict(object = m1, newdata= data.frame(Temp=31), type = 'link', se = TRUE)
+
+lp.31.pred <- lp.31$fit 
+lp.31.lin.pred.lower <- lp.31$fit - qnorm(p = 1-0.05/2) * lp.31$se
+lp.31.lin.pred.upper <- lp.31$fit + qnorm(p = 1-0.05/2) * lp.31$se
+
+pi.31.pred <- exp(lp.31$fit) / (1+exp(lp.31$fit))
+pi.31.lower <- exp(lp.31.lin.pred.lower) / (1+exp(lp.31.lin.pred.lower))
+pi.31.upper <- exp(lp.31.lin.pred.upper) / (1+exp(lp.31.lin.pred.upper))
+
+pi.31.pred
+pi.31.lower
+pi.31.upper
+```
+
+```{r}
+# Code 9
 # bootstrap for 5(e)
 
 bootstrap_coef <- function(data, model, pred_temp) {
@@ -116,3 +133,11 @@ est_prob_72 <- replicate(10000, bootstrap_coef(challenger$Temp, m1, 72), simplif
 quantile(unlist(est_prob_31), c(.05, .95))
 quantile(unlist(est_prob_72), c(.05, .95))
 ```
+
+```{r}
+# Code 10
+m4 <- glm(formula = Fail ~ Temp + I(Temp^2), family = binomial(link=logit), data = challenger) 
+summary(m4)
+anova(m1, m4, test='Chisq')
+```
+
