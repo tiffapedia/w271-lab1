@@ -54,8 +54,8 @@ Bobby: Notes on each variable
 ```{r}
 #plot(x = challenger$Temp, y =challenger$O.ring, ylab='Number of O-ring failures', xlab='Temp(F)',
      #main = 'Joint Temperature Versus Number of O-Ring Failures', xlim=c(50,80), ylim=c(0,3))
-ggplot(challenger, aes(x = Temp, y=O.ring)) + geom_point() +
-  labs(title = 'Joint Temperature Versus Number of O-Ring Failures', y='Number of O-ring failures', x='Temp(F)') +
+ggplot(challenger, aes(x = Temp, y=O.ring)) + geom_point() + 
+  labs(title = 'Joint Temperature Versus Number of O-Ring Failures', y='Number of O-ring failures', x='Temp(F)') + 
   theme(plot.title = element_text(lineheight=1, face="bold", color = "darkred"))
 ```
 **Looking at this plot, there appears to be a correlation of O-ring failures with lower temperatures, with the exception of two points.**\
@@ -75,9 +75,9 @@ ggplot(d, aes(factor(O.ring), Temp)) +
 
 ```{r}
 #plot(x = challenger$Pressure, y =challenger$O.ring, ylab='Number of O-ring failures', xlab='Pressure(psi)', main = 'Combustion Pressure Versus #Number of O-Ring Failures', xlim=c(50,200), ylim=c(0,3))
-ggplot(challenger, aes(x=Pressure, y=O.ring)) + geom_point() +
-  labs(title = 'Joint Pressure Versus Number of O-Ring Failures', y='Number of O-ring failures', x='Pressure (psi') +
-  theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen"))
+ggplot(challenger, aes(x=Pressure, y=O.ring)) + geom_point() + 
+  labs(title = 'Joint Pressure Versus Number of O-Ring Failures', y='Number of O-ring failures', x='Pressure (psi') + 
+  theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
 challenger %>%
   ggplot(aes(x = factor(O.ring), fill = factor(O.ring))) +
   geom_bar() +
@@ -211,7 +211,7 @@ curve(expr = conf.int(newdata=data.frame(Temp=x), mod = d.glm.temp, alpha = 0.05
  * A conclusion that summarize the final result with respect to the question(s) being asked and key takeaways from the analysis.
 
 ```{r}
-challenger.glm.interact <- glm(Fail ~ Temp + Pressure + Temp:Pressure,
+challenger.glm.interact <- glm(Fail ~ Temp + Pressure + Temp:Pressure, 
                family = binomial, data = challenger)
 summary(challenger.glm.interact)
 ```
