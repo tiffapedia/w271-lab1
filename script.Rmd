@@ -25,7 +25,7 @@ rm(list = ls())
 # load data
 d <- read.csv("./dataset/challenger.csv", header=TRUE, sep=",")
 # set x-axis min and max for temp and temp at launch
-xlim.min <- 30; xlim.max <- 80; temp.launch <- 31
+xlim.min <- 31; xlim.max <- 81; temp.launch <- 31
 ```
 
 # Code 1: Univariate Analysis
