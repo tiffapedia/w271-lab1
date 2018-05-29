@@ -125,7 +125,6 @@ summary(d.glm)
 
 (c) Perform LRTs to judge the importance of the explanatory variables in the model.
 ```{r}
-
 challenger.glm.H0 <- glm(Fail ~ Temp, family = binomial, data=challenger)
 summary(challenger.glm.H0)
 anova(challenger.glm.H0, challenger.glm, test='Chisq')
