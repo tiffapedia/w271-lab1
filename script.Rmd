@@ -181,18 +181,11 @@ log(pi/(1-pi))
 # Code 5C: fitting the model
 
 ```{r}
-d
-```
-
-```{r}
 n <- sum(d$Number)
 logm1 <- glm(O.ring/Number ~ Temp + Pressure, weights=Number, family=binomial, data=d)
 summary(logm1)
 deviance(logm1) + 2*3*(n/(n - 3 - 1))
-
 ```
-
-
 
 # Code 6A: binomial model 
 
@@ -407,7 +400,6 @@ parametric bootstrap to compute intervals:
 
 1. simulate large number of data sets (n = 23 for each) from the estimated model of $logit(\pi) = \beta_0 + \beta_1 cdot Temp$
 
-
 2. estimate new models for each data set, say $logit(\hat{\pi}^{*}) = \hat{\beta_0^{*} + \hat{\beta_1^{*} \cdot Temp$
 
 3. compute $\hat{\pi}^{*}$ at a specific temperature of interest.
@@ -417,11 +409,10 @@ The author used the 0.05 and 0.95 observed quantiles from the $\hat{\pi}^{*}$ si
 Using the parameteric bootstrap, compute 90% confidence intervals separately at temperature 31 and 72.
 
 ```{r}
-bootstrap_coef <- function(data, model, pred_temp) {
-  #sample temp with replacement
-  sample_temp <- sample(x = data, size = 23, replace = TRUE)
-  #find predicted probability
-  sample_preds <-predict(object = model, newdata = data.frame(Temp = sample_temp), type = "response")
+bootstrap_coef <- function(temp_data, model, pred_temp) {
+  # 1. simulate large number of datasets from estimated model
+  sample_temps <- sample(x = temp_data, size = 23, replace = TRUE)
+  sample_preds <- predict(object = model, newdata = data.frame(Temp = sample_temps), type = "response")
 
   #build a dataframe
   df <- data.frame(temp = sample_temp, 
@@ -444,6 +435,22 @@ est_prob_72 <- replicate(10000, bootstrap_coef(d$Temp, bm1, 72), simplify = FALS
 
 quantile(unlist(est_prob_31), c(.05, .95))
 quantile(unlist(est_prob_72), c(.05, .95))
+```
+
+```{r}
+library(boot)
+R <- 10000
+# obtain r-square
+rsq <- function(formula, data, indices) {
+  sample <- data[indices,]
+  fit <- lm(formula, data=sample)
+  return(summary(fit)$r.square)
+}
+# bootstrapping with 10000 replications
+results <- boot(data=d, statistic=rsq, R=R, formula=O.ring > 0 ~ Temp)
+results
+plot(results)
+boot.ci(results, type='bca')
 ```
 
 # Code 10: quadratic term to model temperature
