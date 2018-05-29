@@ -99,16 +99,18 @@ unique(d$Pressure)
 
 
 ```{r}
-ggplot(d, aes(x=Pressure, y=O.ring)) + geom_point() + 
-  labs(title = 'Joint Pressure Versus Number of O-Ring Failures', y='Number of O-ring failures', x='Pressure (psi') + 
-  theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
-  
 d %>%
   ggplot(aes(x = factor(O.ring), fill = factor(O.ring))) +
   geom_bar() +
   facet_wrap(~Pressure) + 
-  labs(title = 'Count of O-Ring Failures at Pressure Levels', y='Count', x='Number of O-ring failures') + 
+  labs(title = 'Count of O-Rings Failure at Different Pressure Levels', y='Count', x='Number of O-rings failure') + 
   theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
+```
+
+```{r}
+#ggplot(d, aes(x=Pressure, y=O.ring)) + geom_point() + 
+#  labs(title = 'Joint Pressure Versus Number of O-Ring Failures', y='Number of O-ring failures', #x='Pressure (psi') + 
+#  theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
 ```
 
 # Code 4A: linear regression model 
@@ -399,14 +401,22 @@ curve(get.predicted.binomial.ci(bm1, data.frame(Temp=x))$upper,
 get.predicted.binomial.ci(bm1, data.frame(Temp=temp.launch))
 ```
 
+# Code 9: bootstrap for 5e
+
+parametric bootstrap to compute intervals:
+
+1. simulate large number of data sets (n = 23 for each) from the estimated model of $logit(\pi) = \beta_0 + \beta_1 cdot Temp$
 
 
+2. estimate new models for each data set, say $logit(\hat{\pi}^{*}) = \hat{\beta_0^{*} + \hat{\beta_1^{*} \cdot Temp$
 
-# Code 9
+3. compute $\hat{\pi}^{*}$ at a specific temperature of interest.
+
+The author used the 0.05 and 0.95 observed quantiles from the $\hat{\pi}^{*}$ simulated distribution as their 90% confidence interval limits. 
+
+Using the parameteric bootstrap, compute 90% confidence intervals separately at temperature 31 and 72.
 
 ```{r}
-# bootstrap for 5(e)
-
 bootstrap_coef <- function(data, model, pred_temp) {
   #sample temp with replacement
   sample_temp <- sample(x = data, size = 23, replace = TRUE)
@@ -428,19 +438,21 @@ bootstrap_coef <- function(data, model, pred_temp) {
   predict(object = bootstrap_glm, newdata = data.frame(temp = pred_temp), type = "response")
 }
 
-est_prob_31 <- replicate(10000, bootstrap_coef(d$Temp, m1, 31), simplify = FALSE)
+est_prob_31 <- replicate(10000, bootstrap_coef(d$Temp, bm1, 31), simplify = FALSE)
 
-est_prob_72 <- replicate(10000, bootstrap_coef(d$Temp, m1, 72), simplify = FALSE)
+est_prob_72 <- replicate(10000, bootstrap_coef(d$Temp, bm1, 72), simplify = FALSE)
 
 quantile(unlist(est_prob_31), c(.05, .95))
 quantile(unlist(est_prob_72), c(.05, .95))
 ```
 
-# Code 10
+# Code 10: quadratic term to model temperature
 
 ```{r}
-m4 <- glm(formula = Fail ~ Temp + I(Temp^2), family = binomial(link=logit), data = challenger) 
-summary(m4)
-anova(m1, m4, test='Chisq')
+qm <- glm(O.ring > 0 ~ Temp + I(Temp^2), family=binomial(link=logit), data=d) 
+summary(qm1)
+anova(bm1, qm, test='Chisq')
 ```
+
+This quadratic model is not necessary. 
 
