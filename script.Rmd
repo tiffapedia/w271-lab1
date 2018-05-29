@@ -72,7 +72,7 @@ Null Hypothesis: outside temperature has no effect in O-rings failure
 Alternative Hypothesis: outside temperature has an effect in O-rings failure
 
 ```{r}
-Code 7
+# Code 7
 m0 <- glm(formula = Fail ~ 1, 
           family = binomial,
           data = challenger)
@@ -82,4 +82,71 @@ m1 <- glm(formula = Fail ~ Temp,
 summary(m1)
 m1.b0 <- m1$coefficients[1]
 m1.b1 <- m1$coefficients[2]
+```
+
+```{r}
+# Code 8-10 - see Shan's rmd
+anova(m0, m1, test="Chi")
+```
+
+```{r}
+# Code 11
+anova(m0, m1, test="Chi")
+```
+
+```{r}
+# Code 12
+# Find the observed proportion of failure at each Temp
+w <- aggregate(formula = Fail ~ Temp, data = challenger, FUN = sum)
+n <- aggregate(formula = Fail ~ Temp, data = challenger, FUN = length)
+w.n <- data.frame(Temp = w$Temp, success = w$Fail,
+                  trials = n$Fail, proportion = round(w$Fail/n$Fail, 4))
+# Plot of the observed proportions with logistic regression model
+
+plot(x = w$Temp, y = w$Fail/n$Fail, xlab = "Temperature", ylab = "Estimated Probability of Failure",
+     panel.first = grid(col="gray", lty = "dotted"), main = '(1) Probability of an O-ring failure vs. Temp')
+
+# Put estimated logistic regression model on the plot
+curve(expr = predict(object = challenger.glm.temp, newdata = data.frame(Temp = x), type = "response"),
+                                                                        add = TRUE,
+                                                                        xlim = c(31,81))
+```
+
+```{r}
+# Code 13
+plot(x = w$Temp, y = w$Fail/n$Fail, xlab = "Temperature", ylab = "Estimated Probability of Failure",
+     panel.first = grid(col="gray", lty = "dotted"), main = 'Probability of an O-ring failure vs. Temp with C.I. Bands')
+
+# Put estimated logistic regression model on the plot
+curve(expr = predict(object = challenger.glm.temp, newdata = data.frame(Temp = x), type = "response"),
+                                                                        add = TRUE,
+                                                                        xlim = c(31,81))
+
+# Create C.I. function
+conf.int <- function(newdata, mod, alpha){
+  linear.pred <- predict(object = mod, newdata= newdata, type = 'link', se = TRUE)
+  CI.lin.pred.lower <- linear.pred$fit - qnorm(p = 1-alpha/2) * linear.pred$se
+  CI.lin.pred.upper <- linear.pred$fit + qnorm(p = 1-alpha/2) * linear.pred$se
+  CI.pi.lower <- exp(CI.lin.pred.lower) / (1+exp(CI.lin.pred.lower))
+  CI.pi.upper <- exp(CI.lin.pred.upper) / (1+exp(CI.lin.pred.upper))
+  list(lower = CI.pi.lower, upper = CI.pi.upper)
+}
+
+# Add 95% Wald C.I. bands
+curve(expr = conf.int(newdata=data.frame(Temp=x), mod = challenger.glm.temp, alpha = 0.05)$lower,
+                      col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
+curve(expr = conf.int(newdata=data.frame(Temp=x), mod = challenger.glm.temp, alpha = 0.05)$upper,
+                      col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
+```
+               
+```{r}
+# Code 14
+m2 <- glm(Fail ~ Temp + Pressure, 
+               family = binomial, data = challenger)
+summary(challenger.glm)
+```
+
+```{r}
+# Code 15
+anova(m1, m2, test='Chisq')
 ```
