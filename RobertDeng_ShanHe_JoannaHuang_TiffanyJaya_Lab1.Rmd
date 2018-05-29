@@ -32,24 +32,39 @@ Variables in the dataset:
 • Number: Total number of primary field O-rings (six total, three each for the two booster rockets)
 
 ```{r}
-d <- read.table(file = "./dataset/challenger.csv", header=TRUE, sep=",")
-summary(d)
+library(Hmisc)
+challenger <- read.csv(file ="./dataset/challenger.csv", header=TRUE, sep=",")
+summary(challenger)
+describe(challenger)
+ggplot(challenger, aes(x = Temp)) + geom_histogram(binwidth = 3)
 ```
+
 ```{r}
 # list rows of data that have missing values 
 d[!complete.cases(d),] # no missing values
 ```
 
-**There is a total of 23 data points in this dataset. As mentioned in the article, there were 24 launches prior to Challenger but one flight lost its motors at sea, thus we end up with 23 flights with motor data recorded here. All space shuttles have a total numebr of 6 primary field O-rings, so the Number column can be removed. No columns have any abnormal values.**\
+**There is a total of 23 data points in this dataset. As mentioned in the article, there were 24 launches prior to Challenger but one flight lost its motors at sea, thus we end up with 23 flights with motor data recorded here. All space shuttles have a total numebr of 6 primary field O-rings, so the Number column can be removed. No columns have any abnormal values.**
+
+Bobby: Notes on each variable
+*Pressure - 3 different levels 50, 100, 200 skipping 150. Uneven distribution around the high and low extremes. (15/23 values at 200, 6 at 50, and a meagerly 2 at 100)
+*Temperature - approximately normal distribution centered around mean around 69.57 (F) with spare datapoints below 60
+*O.ring - reasonable amount of class distribution with 70% no failures, and 30% 1 or 2 failures. Would be more ideal if it was 50/50
 
 ```{r}
-plot(x = d$Temp, y =d$O.ring, ylab='Number of O-ring failures', xlab='Temp(F)',
-     main = 'Joint Temperature Versus Number of O-Ring Failures', xlim=c(50,80), ylim=c(0,3))
+#plot(x = challenger$Temp, y =challenger$O.ring, ylab='Number of O-ring failures', xlab='Temp(F)',
+     #main = 'Joint Temperature Versus Number of O-Ring Failures', xlim=c(50,80), ylim=c(0,3))
+ggplot(challenger, aes(x = Temp, y=O.ring)) + geom_point() + 
+  labs(title = 'Joint Temperature Versus Number of O-Ring Failures', y='Number of O-ring failures', x='Temp(F)') + 
+  theme(plot.title = element_text(lineheight=1, face="bold", color = "darkred"))
 ```
 **Looking at this plot, there appears to be a correlation of O-ring failures with lower temperatures, with the exception of two points.**\
 
+**Bobby: You can start to see clusters of datapoints - 0 failures all in the bottom right, centered around a mean in the mid 70's, and 1 and 2 failures center around lower temperatures around the low 60's.**
+
 ```{r}
 library(ggplot2)
+library(dplyr)
 # temperature by o-ring failure
 ggplot(d, aes(factor(O.ring), Temp)) +
   geom_boxplot(aes(fill = factor(O.ring))) + 
@@ -59,11 +74,21 @@ ggplot(d, aes(factor(O.ring), Temp)) +
 ```
 
 ```{r}
-plot(x = d$Pressure, y =d$O.ring, ylab='Number of O-ring failures', xlab='Pressure(psi)', main = 'Combustion Pressure Versus Number of O-Ring Failures', xlim=c(50,200), ylim=c(0,3))
+#plot(x = challenger$Pressure, y =challenger$O.ring, ylab='Number of O-ring failures', xlab='Pressure(psi)', main = 'Combustion Pressure Versus #Number of O-Ring Failures', xlim=c(50,200), ylim=c(0,3))
+ggplot(challenger, aes(x=Pressure, y=O.ring)) + geom_point() + 
+  labs(title = 'Joint Pressure Versus Number of O-Ring Failures', y='Number of O-ring failures', x='Pressure (psi') + 
+  theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
+challenger %>%
+  ggplot(aes(x = factor(O.ring), fill = factor(O.ring))) +
+  geom_bar() +
+  facet_wrap(~Pressure)
 ```
 **Looking at this plot, there doesn't appear to be any particular relationship between O-ring failures and pressure.**\
 
+**Bobby: A scatterplot of two discrete variables - pressure and O.ring count doesn't appear to show any strong correlations. However, the scatterplot has multiple values stacked on each point and could be misleading - plotting with facets reveals taht most of the O.ring failures occured at the 200 psi pressure level.**
+
 ```{r}
+#Bobby: Don't think this is very telling
 # pressure by o-ring failure
 ggplot(d, aes(factor(O.ring), Pressure)) +
   geom_boxplot(aes(fill = factor(O.ring))) + 
@@ -84,6 +109,7 @@ The response variable is O.ring, and the explanatory variables are Temp and Pres
 (a) The authors use logistic regression to estimate the probability an O-ring will fail. In order to use this model, the authors needed to assume that each O-ring is independent for each launch. Discuss why this assumption is necessary and the potential problems with it. Note that a subsequent analysis helped to alleviate the authors’ concerns about independence.\
 **This assumption is necessary because in order to sum up the Bernoulli random variables to a binomial model, the random variables need to be independent and have the same probability of success. The potential issue is that such independence cannot always be assumed.**\ 
 
+
 (b) Estimate the logistic regression model using the explanatory variables in a linear form.\
 **Since we are interested in examining the probability of an O-ring failure, regardless of how many O-rings failed, we can include an additional column in the data with a value of 1 if O-ring failure !=0 and 0 if it does.**\
 ```{r}
@@ -99,24 +125,30 @@ summary(d.glm)
 
 (c) Perform LRTs to judge the importance of the explanatory variables in the model.
 ```{r}
-d.glm.H0 <- glm(Fail ~ Temp, family = binomial, data=d)
-
-anova(d.glm.H0, d.glm, test='Chisq')
+challenger.glm.H0 <- glm(Fail ~ Temp, family = binomial, data=challenger)
+summary(challenger.glm.H0)
+anova(challenger.glm.H0, challenger.glm, test='Chisq')
 ```
+
 ```{r}
 library(car)
 Anova(mod = d.glm, test = 'LR')
 ```
+
 (d) The authors chose to remove Pressure from the model based on the LRTs. Based on your results, discuss why you think this was done. Are there any potential problems with removing this variable?\
-**Both LRTs output a p-value of 0.215648 for the variable Pressure. Thus we cannot reject the null hypothesis model. There is insufficient evidence to indicate that pressure has an effect on the probability of O-ring failure given temperature is in the model.**\
-5. Continuing Exercise 4, consider the simplified model logit(⇡) =  0 +  1Temp, where ⇡ is the probability of an O-ring failure. Complete the following:\
+**Both LRTs output a p-value of 0.215648 for the variable Pressure. Thus we cannot reject the null hypothesis model. There is insufficient evidence to indicate that pressure has an effect on the probability of O-ring failure given temperature is in the model.**
+
+**Bobby: Removing pressure slightly increases our residual deviance by 1.533**
+
+5. Continuing Exercise 4, consider the simplified model logit($\pi$) =  0 +  1Temp, where $\pi$ is the probability of an O-ring failure. Complete the following:\
+
 (a) Estimate the model.
 ```{r}
 d.glm.temp <- glm(formula = Fail ~ Temp, family = binomial(link=logit), data = d)
 summary(d.glm.temp)
 ```
 
-(b) Construct two plots: (1) ⇡ vs. Temp and (2) Expected number of failures vs. Temp. Use a temperature range of 31  to 81  on the x-axis even though the minimum temperature in the data set was 53.\
+(b) Construct two plots: (1) $\pi$ vs. Temp and (2) Expected number of failures vs. Temp. Use a temperature range of 31  to 81  on the x-axis even though the minimum temperature in the data set was 53.\
 ```{r}
 # Find the observed proportion of failure at each Temp
 w <- aggregate(formula = Fail ~ Temp, data = d, FUN = sum)
@@ -137,7 +169,7 @@ curve(expr = predict(object = d.glm.temp, newdata = data.frame(Temp = x), type =
                                                                         xlim = c(31,81))
 ```
 
-(c) Include the 95% Wald confidence interval bands for ⇡ on the plot. Why are the bands much wider for lower temperatures than for higher temperatures?\
+(c) Include the 95% Wald confidence interval bands for $\pi$ on the plot. Why are the bands much wider for lower temperatures than for higher temperatures?\
 ```{r}
 plot(x = w$Temp, y = w$Fail/n$Fail, xlab = "Temperature", ylab = "Estimated Probability of Failure",
      panel.first = grid(col="gray", lty = "dotted"), main = '⇡ vs. Temp with C.I. Bands')
@@ -164,8 +196,10 @@ curve(expr = conf.int(newdata=data.frame(Temp=x), mod = d.glm.temp, alpha = 0.05
                       col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
 ```
 
-(d) The temperature was 31  at launch for the Challenger in 1986. Estimate the probability of an O-ring failure using this temperature, and compute a corresponding confidence interval. Discuss what assumptions need to be made in order to apply the inference procedures.\
+(d) The temperature was 31  at launch for the Challenger in 1986. Estimate the probability of an O-ring failure using this temperature, and compute a corresponding confidence interval. Discuss what assumptions need to be made in order to apply the inference procedures.
+
 (e) Rather than using Wald or profile LR intervals for the probability of failure, Dalal et al. (1989) use a parametric bootstrap to compute intervals. Their process was to (1) simulate a large number of data sets (n = 23 for each) from the estimated model of logit(⇡ˆ) =  ˆ0 +  ˆ1Temp; (2) estimate new models for each data set, say logit(⇡ˆ?) =  ˆ0? +  ˆ1?Temp; and (3) compute ⇡ˆ? at a specific temperature of interest. The authors used the 0.05 and 0.95 observed quantiles from the ⇡ˆ? sim- ulated distribution as their 90% confidence interval limits. Using the parametric bootstrap, compute 90% confidence intervals separately at temperatures of 31  and 72 .27\
+
 (f) Determine if a quadratic term is needed in the model for the temperature.\
 
 3. In addition to the questions in Question 4 and 5, answer the following questions:
@@ -176,5 +210,8 @@ curve(expr = conf.int(newdata=data.frame(Temp=x), mod = d.glm.temp, alpha = 0.05
 # Conclusion
  * A conclusion that summarize the final result with respect to the question(s) being asked and key takeaways from the analysis.
 
-
-
+```{r}
+challenger.glm.interact <- glm(Fail ~ Temp + Pressure + Temp:Pressure, 
+               family = binomial, data = challenger)
+summary(challenger.glm.interact)
+```

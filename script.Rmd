@@ -10,59 +10,198 @@ fontsize: 11pt
 geometry: margin=1in
 ---
 
+# Code 0: load packages and dataset
+
 ```{r}
-# Code 1
-summary(challenger)
-describe(challenger)
-ggplot(challenger, aes(x = Temp)) + geom_histogram(binwidth = 3)
-
-# list rows of data that have missing values 
-challenger[!complete.cases(challenger),] # no missing values
-
+# add packages
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(stargazer)
+# prevent source code from running off the page
+opts_chunk$set(tidy.opts=list(width.cutoff=60), tidy=TRUE)
+# remove all objects from current workspace
+rm(list = ls())
+# load data
+d <- read.csv("./dataset/challenger.csv", header=TRUE, sep=",")
+# set x-axis min and max for temp and temp at launch
+xlim.min <- 30; xlim.max <- 80; temp.launch <- 31
 ```
 
-```{r}
-# Code 2
-ggplot(challenger, aes(x = Temp, y=O.ring)) + geom_point() + 
-  labs(title = 'Joint Temperature Versus Number of O-Ring Failures', y='Number of O-ring failures', x='Temp(F)') + 
-  theme(plot.title = element_text(lineheight=1, face="bold", color = "darkred"))
-```
+# Code 1: Univariate Analysis
 
 ```{r}
-# Code 3
-ggplot(challenger, aes(x=Pressure, y=O.ring)) + geom_point() + 
-  labs(title = 'Joint Pressure Versus Number of O-Ring Failures', y='Number of O-ring failures', x='Pressure (psi') + 
-  theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
-  
-challenger %>%
+# structure of data
+str(d)
+# summary of data
+summary(d)
+# list row with missing values
+d[!complete.cases(d),]
+```
+
+## Univariate analysis
+
+https://datascience.ibm.com/exchange/public/entry/view/78ee738ab24e06c942d7b562b29dba30
+
+### O.rings
+
+```{r}
+# number of O-rings failure
+table(d$O.ring)
+```
+
+### Temp
+
+```{r}
+# kernel density of launch temperature
+plot(density(d$Temp), main='Kernel Density of Launch Temperature', xlab='Temperature (F)')
+rug(d$Temp)
+# boxplot of launch temperature
+boxplot(d$Temp, main='Boxplot of Launch Temperature', xlab='Temperature (F)')
+```
+
+# Code 2A: plot figure 1, joint temperature versus number of O-rings failure incidents
+
+##  Using plot
+
+```{r}
+# average temperature for flights with at least one O-rings failure
+avg.temp.failure <- d %>% filter(., O.ring > 0) %>% .$Temp %>% mean(.)
+# average temperature for flights with no O-rings failure
+avg.temp.success <- d %>% filter(., O.ring == 0) %>% .$Temp %>% mean(.)
+# average temperature for all flights
+avg.temp <- mean(d$Temp)
+# plot joint temperature vs number of O-rings failure incidents
+plot(main='Joint Temperature vs Number of O-rings Failure Incidents',
+     x=d$Temp, xlab='Temperature (F)', xlim=c(xlim.min,xlim.max),
+     y=d$O.ring, ylab='Number of O-rings Failure', yaxt='n', 
+     panel.first=grid(col="gray", lty="dotted"), pch=20)
+abline(h=0, v=c(avg.temp.failure, avg.temp.success, avg.temp, temp.launch), 
+       col=c('black', 'red', 'green', 'gray', 'blue'))
+axis(side=2, at=0:2)
+```
+
+## Using ggplot (TODO: add abline at 0, format y-axis to show whole numbers, add avg temps)
+
+```{r}
+ggplot(d, aes(x=Temp, y=O.ring)) + 
+  geom_point() + 
+  labs(title = 'Joint Temperature vs Number of O-Rings Failure Incidents', 
+       x='Temperature (F)', y='Number of O-rings Failure') 
+# + theme(plot.title = element_text(lineheight=1, face="bold", color = "darkred"))
+```
+
+# Code 3: (TODO)
+
+```{r}
+unique(d$Pressure)
+```
+
+
+```{r}
+d %>%
   ggplot(aes(x = factor(O.ring), fill = factor(O.ring))) +
   geom_bar() +
   facet_wrap(~Pressure) + 
-  labs(title = 'Count of O-Ring Failures at Pressure Levels', y='Count', x='Number of O-ring failures') + 
+  labs(title = 'Count of O-Rings Failure at Different Pressure Levels', y='Count', x='Number of O-rings failure') + 
   theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
 ```
 
 ```{r}
-# Code 4
-challenger$Fail <- ifelse(challenger$O.ring>0, 1, 0)
-head(challenger)
-
+#ggplot(d, aes(x=Pressure, y=O.ring)) + geom_point() + 
+#  labs(title = 'Joint Pressure Versus Number of O-Ring Failures', y='Number of O-ring failures', #x='Pressure (psi') + 
+#  theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
 ```
+
+# Code 4A: linear regression model 
+
 ```{r}
-# Notation code - Code 5
+lm1 <- lm(O.ring ~ Temp, data=d)
+summary(lm1)
 ```
-We apply the logistic regression model to model the probability of the O-rings failing at various temperatures.
 
-$$\begin{aligned} P(Y_i = 1 | x_i) = \frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x_i}} = \pi_i \end{aligned}$$
+
+The ordinary least squares, simple linear regression model, prediction equation is given by 
+
+predicted damage = 3.69841 - 0.04754 * Temp 
+
+
+```{r}
+predict(lm1, data.frame(Temp = 31), type='response')
+```
+
+The predicted damage can be interpreted as the predicted probability of damage for the given temperature.
+Plugging various temperatures into this equation we get somewhat reasonable predicted probabilities.
+For a temperature of 77, the predicted probability of damage is 0.025. For a temperature of 65,
+the predicted probability is 0.474. Finally, for a temperature of 51, the predicted probability is 0.998.
+As temperature decreases the predicted probability of damage increases. Figure 3.5 shows the fit of the
+simple linear regression model.
+
+Although this appears to be a reasonable prediction equation, it can lead to nonsensical predictions.
+For example, if the temperature is 85, the predicted probability of damage is -0.274. This is nonsense
+since probabilities can never be less than zero. Similarly, any temperature 50 or below will give a
+predicted probability of more than one. Again, this is nonsense. The bounded nature of probabilities is
+not incorporated into the simple linear regression model.
+
+Another clue to the inadequacy of the simple linear model for the Challenger data is shown in the
+pattern of the residuals. Rather than exhibit a random scatter of points, the plot of residuals versus
+temperature (see Figure 3.6) shows two slanted lines.
+
+
+```{r}
+
+lm1.residuals <- residuals(lm1)
+plot(d$Temp, lm1.residuals, xlab="temperature", ylab="Residuals:SLR model", main="Plot of residuals (SLR model)")
+```
+
+When ordinary least squares is used to fit a simple linear regression model, the estimates of the
+intercept and slope will be unbiased. That is, on average the intercept and slope estimates give the
+correct values. Since we are violating the equal variance assumption (recall the variance of a binary
+response will change with changes in the mean), the standard errors for the estimates of intercept and
+slope will be larger than they should be. Additionally, the unusual pattern in the residuals indicates
+that the simple linear model does not provide a good fit to the data.
+When variances are unequal, weighted least squares (an extension of ordinary least squares) can be
+used. In essence, observations with large variances are given lower weights and thus have less influence
+on the fit of the simple linear model. Ordinarily the weights are inversely proportional to the variances.
+That is
+
+
+
+# Code 5A: binary logistic regression model 
+
+A better approach is to fit the linear regression model to a function of π that is
+bounded by 0 and 1 and with which the binomial random variable at least theoretically
+has a linear relationship. Two such functions are the logit , defined as 
+
+log(pi/(1-pi))
+
+
+# Code 5B: hypothesis of binary logistic regression model 
+
+# Code 5C: fitting the model
+
+```{r}
+n <- sum(d$Number)
+logm1 <- glm(O.ring/Number ~ Temp + Pressure, weights=Number, family=binomial, data=d)
+summary(logm1)
+deviance(logm1) + 2*3*(n/(n - 3 - 1))
+```
+
+# Code 6A: binomial model 
+
+We apply the logistic regression model to model the probability of the O-rings failure at various temperatures.
+
+$$\begin{aligned} 
+P(Y_i = 1 | x_i) = \frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x_i}} = \pi_i 
+\end{aligned}$$
 
 $i$: observation for a single launch
-$Y_i = 1$: failure launch, at least one O-ring failing
-$Y_i = 0$: successful launch, no O-ring failing
+$Y_i = 1$: failure launch, at least one O-ring failure
+$Y_i = 0$: successful launch, no O-ring failure
 $x_i$: outside temperature in degrees Fahrenheit
 
-```{r}
-# Notation code - Code 6
-```
+# Code 6B: hypothesis of binomial model 
+
 $H_0: \beta_1 = 0$
 
 $H_a: \beta_1 \ne 0$
@@ -71,31 +210,268 @@ Null Hypothesis: outside temperature has no effect in O-rings failure
 
 Alternative Hypothesis: outside temperature has an effect in O-rings failure
 
+# Code 6C: fitting the model
+
 ```{r}
-# Code 7
-m0 <- glm(formula = Fail ~ 1, 
-          family = binomial,
-          data = challenger)
-m1 <- glm(formula = Fail ~ Temp, 
-          family = binomial,
-          data = challenger)
-summary(m1)
-m1.b0 <- m1$coefficients[1]
-m1.b1 <- m1$coefficients[2]
+bm0 <- glm(formula = O.ring > 0 ~ 1, family=binomial,  data=d)
+bm1 <- glm(formula = O.ring > 0 ~ Temp, family=binomial, data=d)
+bm2 <- glm(formula = O.ring > 0 ~ Pressure, family=binomial, data=d)
+bm3 <- glm(formula = O.ring > 0 ~ Temp + Pressure, family=binomial, data=d)
+stargazer(bm0, bm1, bm2, bm3, header=FALSE, type='text')
+bm1.b0 <- bm1$coefficients[1]
+bm1.b1 <- bm1$coefficients[2]
+```
+
+$$\begin{aligned}
+P(Y_i = 1 | x_i) & = \frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x_i}} \\
+                 & \approx \frac{e^{15.0429 - 0.232 x_i}}{1 + e^{15.0429 - 0.232 x_i}} 
+                 = \hat{\pi_i}
+\end{aligned}$$
+
+# Code 6D: Likelihood Ratio Test (LRT) to determine if Temp was a statistically significant addition to model
+
+```{r}
+# likelihood ratio test
+# method #1
+pchisq(-2 * (logLik(bm0) - logLik(bm1)), df=1, lower.tail=FALSE)
+# method #2 (recommended)
+anova(bm0, bm1, bm2, test='Chi')
+```
+
+# Code 6E: expected value and standard error
+
+$$\begin{aligned}
+E(Y_i) = 1 \cdot \pi_i + 0 \cdot (1 - \pi_i) = \pi_i
+\end{aligned}$$
+
+
+$$\begin{aligned}
+\sigma^2_{y_i} & = E(Y_i - E(Y_i))^2 \\
+               & = E(Y_i)(1 - E(Y_i)) \\
+               & = \pi_i (1 - \pi_i)
+\end{aligned}$$
+
+
+# Code 6F: concluding remakrs about binomial model 
+
+## p-value
+
+With p-value = 0.0320, there is enough evidence to reject the null hypothesis and conclude that outside temperature has an effect in O-ring failure.
+
+## Interpret the main result of your final model in terms of both odds and probability of failure.
+
+### 1. odds
+
+$$\begin{aligned}
+odds(x_i) & = \frac{\pi_i}{1 - \pi_i} = \frac{\frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x_i}}}{1 - \frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x_i}}} \\ 
+          & = e^{\beta_0 + \beta_1 x_i}
+\end{aligned}$$
+
+
+```{r}
+# for every 1 F increase, odds of the o-rings failing decreases by a factor of 
+exp(bm1.b1)
+# for every 1 F decrease, odds of the o-ring failing increases by a factor of 
+exp(-bm1.b1)
+```
+
+For every 1 degree Fahrenheit increase in temperature, the odds of the O-rings failing for a given launch decreases by a factor of 0.79. 
+
+For every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by a factor of 1.26. 
+
+```{r}
+# for every 1 F increase, odds of the o-rings failing decreases by ... % 
+100 * (exp(bm1.b1) - 1)
+# for every 1 F decrease, odds of the o-rings failing increases by ... % 
+100 * (exp(-bm1.b1) - 1)
+```
+
+For every 1 degree Fahrenheit increase in temperature, the odds of the O-rings failing for a given launch decreases by 20%. 
+
+For every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26%. 
+
+### 2. odds ratio
+
+$\text{odds ratio} = \frac{odds(x_i + 1)}{odds(x_i)} = \frac{e^{\beta_0 + \beta_1(x_i + 1)}}{e^{\beta_0 + \beta_1(x_i)}} = e^{\beta_1}$
+
+$\hat{\text{odds ratio}} = e^{\hat{\beta_1}} = e^{-0.2321627} = 0.7928171$
+
+```{r}
+# estimated odds ratio
+exp(bm1.b1)
+```
+
+95% CI for estimated odds ratio: $(e^{\hat{\beta_1} - 1.96 \cdot SE(\hat{\beta_1})}}, e^{\hat{\beta_1} + 1.96 \cdot SE(\hat{\beta_1})}})$
+
+```{r}
+# 95% ci for odds ratio
+get.glm.se <- function(model) sqrt(diag(vcov(model)))
+c(exp(bm1.b1 - 1.96 * get.glm.se(bm1)['Temp']), exp(bm1.b1 + 1.96 * get.glm.se(bm1)['Temp']))
+```
+
+The odds of failure decreases as temperature increases.
+
+### 3. probability of failure
+
+Since the Challenger shuttle was launched at 31 F, the proability of O-rings failing based on our logistic regression model is approximately $\hat{\pi_i} \approx 0.99.$
+
+```{r}
+predict(bm1, data.frame(Temp=temp.launch), type='response')
+```
+
+If they have waited until 53 F as suggested, the probability of O-rings failing based on our logistic regression model is approximately 0.94. 
+
+```{r}
+predict(bm1, data.frame(Temp=53), type='response')
+```
+
+This would have decreased the odds of a failure by a factor of 0.006. 
+
+```{r}
+# If launched at 53 F instead of 31, it would have decreased odds of failure by a factor of
+exp(bm1.b1  * (53 - temp.launch))
+```
+
+The probability of all five O-rings failing is 99.8%, which is highly likely.
+
+```{r}
+predict(bm1, data.frame(Temp=temp.launch), type='response')^5
+```
+
+# Code 2B: plotting figure 4, joint temperature versus number of O-rings failure incidents with linear, binary and binomial model
+
+## Using plot
+
+```{r}
+plot(main='Joint Temperature vs Number of O-rings Failure Incidents',
+     x=d$Temp, xlab='Temperature (F)', xlim=c(xlim.min,xlim.max),
+     y=d$O.ring, ylab='Number of O-rings Failure', yaxt='n', 
+     panel.first=grid(col="gray", lty="dotted"), pch=20)
+abline(h=0)
+axis(side=2, at=0:2)
+
+# linear model
+abline(lm1, col='red')
+# add confidence interval
+get.predicted.linear.ci <- function(model, newdata, alpha=0.05) {
+  y.hat <- predict(model, newdata, interval='predict')
+  list(lower=y.hat[,'lwr'], upper=y.hat[,'upr'])
+}
+input <- seq(xlim.min, xlim.max)
+ci <- get.predicted.linear.ci(lm1, data.frame(Temp=input))
+lines(input, ci$lower, col='red', lty='dotdash')
+lines(input, ci$upper, col='red', lty='dotdash')
+
+# binary logistic regression model: TODO
+
+# binomial model: method 1
+curve(exp(bm1.b0 + bm1.b1*x)/(1 + exp(bm1.b0 + bm1.b1*x)), 
+      from=xlim.min, to=xlim.max, add=TRUE, col='blue')
+# binomial model: method 2
+curve(predict.glm(bm1, data.frame(Temp=x), type='response'), 
+      from=xlim.min, to=xlim.max, add=TRUE, col='blue')
+# add confidence interval 
+get.predicted.binomial.ci <- function(model, newdata, alpha=0.05) {
+  y.hat <- predict.glm(model, newdata, type='link', se.fit=TRUE)
+  y.hat.lower <- y.hat$fit - qnorm(1 - alpha/2) * y.hat$se.fit
+  y.hat.upper <- y.hat$fit + qnorm(1 - alpha/2) * y.hat$se.fit
+  pi.hat.lower <- exp(y.hat.lower) / (1 + exp(y.hat.lower))
+  pi.hat.upper <- exp(y.hat.upper) / (1 + exp(y.hat.upper))
+  list(lower=pi.hat.lower, upper=pi.hat.upper)
+}
+curve(get.predicted.binomial.ci(bm1, data.frame(Temp=x))$lower, 
+      add=TRUE, col='blue', lty='dotdash')
+curve(get.predicted.binomial.ci(bm1, data.frame(Temp=x))$upper, 
+      add=TRUE, col='blue', lty='dotdash')
+```
+
+
+# Code 8: predicted confidence interval with temperature at launch
+
+## with binomial model 
+
+```{r}
+get.predicted.binomial.ci(bm1, data.frame(Temp=temp.launch))
+```
+
+# Code 9: bootstrap for 5e
+
+parametric bootstrap to compute intervals:
+
+1. simulate large number of data sets (n = 23 for each) from the estimated model of $logit(\pi) = \beta_0 + \beta_1 cdot Temp$
+
+2. estimate new models for each data set, say $logit(\hat{\pi}^{*}) = \hat{\beta_0^{*} + \hat{\beta_1^{*} \cdot Temp$
+
+3. compute $\hat{\pi}^{*}$ at a specific temperature of interest.
+
+The author used the 0.05 and 0.95 observed quantiles from the $\hat{\pi}^{*}$ simulated distribution as their 90% confidence interval limits. 
+
+Using the parameteric bootstrap, compute 90% confidence intervals separately at temperature 31 and 72.
+
+```{r}
+bootstrap_coef <- function(temp_data, model, pred_temp) {
+  # 1. simulate large number of datasets from estimated model
+  sample_temps <- sample(x = temp_data, size = 23, replace = TRUE)
+  sample_preds <- predict(object = model, newdata = data.frame(Temp = sample_temps), type = "response")
+
+  #build a dataframe
+  df <- data.frame(temp = sample_temp, 
+             prob_pred = sample_preds
+             )
+  
+  #map function to find predicted class (fail or not fail)
+  df$fail_pred <- unlist(lapply(X = df$prob_pred, FUN = function(x) rbinom(1, 1, x)))
+  
+  #build glm model
+  bootstrap_glm <- glm(formula = fail_pred ~ temp, family = binomial(link=logit), data = df)
+  
+  #predict probability at pred_temp
+  predict(object = bootstrap_glm, newdata = data.frame(temp = pred_temp), type = "response")
+}
+
+est_prob_31 <- replicate(10000, bootstrap_coef(d$Temp, bm1, 31), simplify = FALSE)
+
+est_prob_72 <- replicate(10000, bootstrap_coef(d$Temp, bm1, 72), simplify = FALSE)
+
+quantile(unlist(est_prob_31), c(.05, .95))
+quantile(unlist(est_prob_72), c(.05, .95))
 ```
 
 ```{r}
-# Code 8-10 - see Shan's rmd
-anova(m0, m1, test="Chi")
+library(boot)
+R <- 10000
+# obtain r-square
+rsq <- function(formula, data, indices) {
+  sample <- data[indices,]
+  fit <- lm(formula, data=sample)
+  return(summary(fit)$r.square)
+}
+# bootstrapping with 10000 replications
+results <- boot(data=d, statistic=rsq, R=R, formula=O.ring > 0 ~ Temp)
+results
+plot(results)
+boot.ci(results, type='bca')
 ```
 
+# Code 10: quadratic term to model temperature
+
 ```{r}
+qm <- glm(O.ring > 0 ~ Temp + I(Temp^2), family=binomial(link=logit), data=d) 
+summary(qm1)
+anova(bm1, qm, test='Chisq')
+```
+
+This quadratic model is not necessary. 
+
 # Code 11
+
+```{r}
 anova(m0, m1, test="Chi")
 ```
 
-```{r}
 # Code 12
+
+```{r}
 # Find the observed proportion of failure at each Temp
 w <- aggregate(formula = Fail ~ Temp, data = challenger, FUN = sum)
 n <- aggregate(formula = Fail ~ Temp, data = challenger, FUN = length)
@@ -112,8 +488,9 @@ curve(expr = predict(object = challenger.glm.temp, newdata = data.frame(Temp = x
                                                                         xlim = c(31,81))
 ```
 
-```{r}
 # Code 13
+
+```{r}
 plot(x = w$Temp, y = w$Fail/n$Fail, xlab = "Temperature", ylab = "Estimated Probability of Failure",
      panel.first = grid(col="gray", lty = "dotted"), main = 'Probability of an O-ring failure vs. Temp with C.I. Bands')
 
@@ -138,15 +515,17 @@ curve(expr = conf.int(newdata=data.frame(Temp=x), mod = challenger.glm.temp, alp
 curve(expr = conf.int(newdata=data.frame(Temp=x), mod = challenger.glm.temp, alpha = 0.05)$upper,
                       col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
 ```
+
+# Code 14
                
 ```{r}
-# Code 14
 m2 <- glm(Fail ~ Temp + Pressure, 
                family = binomial, data = challenger)
 summary(challenger.glm)
 ```
 
-```{r}
 # Code 15
+
+```{r}
 anova(m1, m2, test='Chisq')
 ```
