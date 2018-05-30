@@ -411,22 +411,55 @@ The author used the 0.05 and 0.95 observed quantiles from the $\hat{\pi}^{*}$ si
 Using the parameteric bootstrap, compute 90% confidence intervals separately at temperature 31 and 72.
 
 
+My understanding is there should be two stages of randomization.  1) randomize the `x` variable (=temp); then 2) randomize the binomial output of all of the n (=23) trials in each sample (=fraction failed).  My assumption was we should put both (1) and (2) inside the for 1=1:10000 loops.  
+
+But in Bilder's example (http://www.chrisbilder.com/categorical/Chapter2/SamplingDist.R, under the comment "Simulate more than one data set and calculate true confidence level ") it appears he does (1) outside of the loop, and (2) inside.  He also doesn't claim it's a "bootstrap"; he just calls it a Monte Carlo simulation.  
+
+First, this happens before `sim.all` is called:
+```x<-runif(n = sample.size, min = 0, max = 1)
+  pi<-exp(beta0 + beta1*x) / (1 + exp(beta0 + beta1*x))```
+Then he calls sim.all (he has 3 versions in the code, 2 are commented out by default):
+   ```save.it<-sim.all(sample.size = sample.size, number.data.sets = 10000, x = x, seed.numb = 1829)```
+ Inside sim.all, he calculates the response variable for all the simulations at once:
+```y<-rbinom(n = length(x)*number.data.sets, size = 1, prob = pi)```
+and rearranges these values into a matrix.  Then he calls his `calc2` function to build a new glm model for each simulation (=column of the matrix) via `apply`.  `apply` iterates through the columns of the matrix to get y values, but pairs each with the fixed values of the same x vector:
+```save.results<-apply(X = y.mat, MARGIN = 2, FUN = calc2, x = x)```
+(edited)
+
+elegant, but once he's picked his `x` values (randomly) once, they are used in all 10,000 runs
+
 ```{r}
+library(dplyr)
+sample_n(d, sample.size, replace=TRUE)
+```
+
+
+```{r}
+library(dplyr)
+
 d <- read.csv("./dataset/challenger.csv", header=TRUE, sep=",")
 
 # set seed number to reproduce results
 set.seed(101)
 
-bootstrap <- function(sample.size, total.O.rings, pi.hat, pred.temp){
+bootstrap <- function(sample.size, total.O.rings, pred.temp, original.data){
+  # simulate temperature at launch
+  data <- sample_n(original.data, sample.size, replace=TRUE)
+  newdata <- data.frame(Temp=data$Temp)
+  
+  # find pi.hat 
+  m <- glm(formula=O.ring/Number ~ Temp, weights=Number, family=binomial, data=data)
+  pi.hat <- predict(object=m, newdata=newdata, type='response')
+
   # simulate number of O-rings failure
-  data$O.ring <- rbinom(n=sample.size, size=total.O.rings, pi.hat)
-  data$Number <- replicate(sample.size, total.O.rings)
+  newdata$O.ring <- rbinom(n=sample.size, size=total.O.rings, pi.hat)
+  newdata$Number <- replicate(sample.size, total.O.rings)
   
   # estimated model 
-  estimated.m <- glm(formula=O.ring/Number ~ Temp, weights=Number, family=binomial(link=logit), data=data)
+  estimated.m <- glm(formula=O.ring/Number ~ Temp, weights=Number, family=binomial(link=logit), data=newdata)
   
   # make predictions
-  estimated.pi.hat <- predict(object=estimated.m, newdata=data.frame(Temp=temp.launch), type='response')
+  estimated.pi.hat <- predict(object=estimated.m, newdata=data.frame(Temp=pred.temp), type='response')
 
   return(estimated.pi.hat)
 }
@@ -440,15 +473,65 @@ sample.size <- 23
 total.O.rings <- 6
 #total.O.rings <- unique(d$Number)
 
-# 3. pi.hat from the model used
-m <- glm(formula=O.ring/Number ~ Temp, weights=Number, family=binomial, data=d)
-pi.hat <- predict(object=m, newdata=data.frame(Temp=d$Temp), type='response')
-
-# 4. provide predicted temperature
+# 3. provide predicted temperature
 pred.temp <- 31
 
-# 5. 
-estimated.pi.hats <- replicate(10000, bootstrap(sample.size, total.O.rings, pi.hat, pred.temp))
+# 5. run 10000 times
+estimated.pi.hats <- replicate(10000, bootstrap(sample.size, total.O.rings, pred.temp, d))
+quantile(estimated.pi.hats, c(0.05, 0.95))
+```
+
+
+
+```{r}
+library(dplyr)
+
+# remove all objects from current workspace
+rm(list = ls())
+
+# load dataset
+d <- read.csv("./dataset/challenger.csv", header=TRUE, sep=",")
+
+# set seed number to reproduce results
+set.seed(101)
+
+bootstrap <- function(sample.size, total.O.rings, pred.temp, original.data){
+  
+  Temp <- sample(d$Temp, sample.size)
+  pi.hat <- predict(object=m, newdata=data.frame(Temp=Temp), type='response')
+  O.ring <- rbinom(n=sample.size, size=total.O.rings, pi.hat)
+  Number <- replicate(sample.size, total.O.rings)
+  
+  newdata <- data.frame(Temp = Temp,
+                        O.ring = O.ring,
+                        Number = Number)
+  
+  # estimated model 
+  estimated.m <- glm(formula=O.ring/Number ~ Temp, weights=Number, family=binomial(link=logit), data=newdata)
+  
+  # make predictions
+  estimated.pi.hat <- predict(object=estimated.m, newdata=data.frame(Temp=pred.temp), type='response')
+  
+  return(estimated.pi.hat)
+}
+
+# provide the variables to pass in to bootstrap
+# 1. sample size
+sample.size <- 23 
+#sample.size <- nrow(d)
+
+# 2. total number of O-rings
+total.O.rings <- 6
+#total.O.rings <- unique(d$Number)
+
+# 3. provide predicted temperature
+pred.temp <- 31
+
+# 4. provide the model
+m <- glm(formula=O.ring/Number ~ Temp, weights=Number, family=binomial, data=d)
+
+# 5. run 10000 times
+estimated.pi.hats <- replicate(10000, bootstrap(sample.size, total.O.rings, pred.temp, d))
 quantile(estimated.pi.hats, c(0.05, 0.95))
 ```
 
