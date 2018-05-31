@@ -413,7 +413,7 @@ The author used the 0.05 and 0.95 observed quantiles from the $\hat{\pi}^{*}$ si
 Using the parameteric bootstrap, compute 90% confidence intervals separately at temperature 31 and 72.
 
 ```{r}
-get.pi.hats <- function(given.temps, given.model, given.formula, sample.size, total.O.rings, which.temp){
+get.pi.hat.star <- function(given.temps, given.model, given.formula, sample.size, total.O.rings, which.temp){
   
   # simulate dataset from the given model
   Temp <- sample(given.temps, sample.size, replace=TRUE)
@@ -425,15 +425,13 @@ get.pi.hats <- function(given.temps, given.model, given.formula, sample.size, to
   # estimate new model from dataset
   estimated.model <- suppressWarnings(glm(formula=given.formula, family=binomial(link='logit'), data=newdata))
   
-  # predict probability of O-rings failure at 
-  estimated.pi.hat <- predict(object=estimated.model, newdata=data.frame(Temp=which.temp), type='response')
-  
-  return(estimated.pi.hat)
+  # predict pi.hat.star at which.temp
+  return(predict(object=estimated.model, newdata=data.frame(Temp=which.temp), type='response'))
 }
 
 get.ci.w.parametric.bootstrap <- function(given.temps, given.model, given.formula, sample.size, total.O.rings, which.temp, num.datasets, percent.ci) {
-  estimated.pi.hats <- replicate(num.datasets, get.pi.hats(given.temps, given.model, given.formula, sample.size, total.O.rings, which.temp))
-  return(quantile(estimated.pi.hats, c(1-percent.ci, percent.ci)))
+  mult.pi.hat.star <- replicate(num.datasets, get.pi.hat.star(given.temps, given.model, given.formula, sample.size, total.O.rings, which.temp))
+  return(quantile(mult.pi.hat.star, c(1-percent.ci, percent.ci)))
 }
 
 # provide the variables to pass in to bootstrap
@@ -453,11 +451,11 @@ given.model <- glm(formula=given.formula, family=binomial(link='logit'), data=d)
 # for temperature at launch: 31 F
 get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, 
                               sample.size, total.O.rings, which.temp=temp.launch,
-                              num.datasets=1000, percent.ci=.9)
+                              num.datasets=10000, percent.ci=.9)
 # for recommended temperature to launch: 72 F
 get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, 
                               sample.size, total.O.rings, which.temp=72,
-                              num.datasets=1000, percent.ci=.9)
+                              num.datasets=10000, percent.ci=.9)
 ```
 
 # Code 10: quadratic term to model temperature
