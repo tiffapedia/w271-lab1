@@ -22,10 +22,12 @@ library(stargazer)
 opts_chunk$set(tidy.opts=list(width.cutoff=60), tidy=TRUE)
 # remove all objects from current workspace
 rm(list = ls())
+# set seed number to reproduce results
+set.seed(101)
 # load data
 d <- read.csv("./dataset/challenger.csv", header=TRUE, sep=",")
-# set x-axis min and max for temp and temp at launch
-xlim.min <- 30; xlim.max <- 80; temp.launch <- 31
+# set x-axis min and max for temp, temp at launch, recommended temp to launch
+xlim.min <- 30; xlim.max <- 80; temp.launch <- 31; rec.temp <- 72
 ```
 
 # Code 1A: EDA on the structure of the data
@@ -410,174 +412,52 @@ The author used the 0.05 and 0.95 observed quantiles from the $\hat{\pi}^{*}$ si
 
 Using the parameteric bootstrap, compute 90% confidence intervals separately at temperature 31 and 72.
 
-
-My understanding is there should be two stages of randomization.  1) randomize the `x` variable (=temp); then 2) randomize the binomial output of all of the n (=23) trials in each sample (=fraction failed).  My assumption was we should put both (1) and (2) inside the for 1=1:10000 loops.  
-
-But in Bilder's example (http://www.chrisbilder.com/categorical/Chapter2/SamplingDist.R, under the comment "Simulate more than one data set and calculate true confidence level ") it appears he does (1) outside of the loop, and (2) inside.  He also doesn't claim it's a "bootstrap"; he just calls it a Monte Carlo simulation.  
-
-First, this happens before `sim.all` is called:
-```x<-runif(n = sample.size, min = 0, max = 1)
-  pi<-exp(beta0 + beta1*x) / (1 + exp(beta0 + beta1*x))```
-Then he calls sim.all (he has 3 versions in the code, 2 are commented out by default):
-   ```save.it<-sim.all(sample.size = sample.size, number.data.sets = 10000, x = x, seed.numb = 1829)```
- Inside sim.all, he calculates the response variable for all the simulations at once:
-```y<-rbinom(n = length(x)*number.data.sets, size = 1, prob = pi)```
-and rearranges these values into a matrix.  Then he calls his `calc2` function to build a new glm model for each simulation (=column of the matrix) via `apply`.  `apply` iterates through the columns of the matrix to get y values, but pairs each with the fixed values of the same x vector:
-```save.results<-apply(X = y.mat, MARGIN = 2, FUN = calc2, x = x)```
-(edited)
-
-elegant, but once he's picked his `x` values (randomly) once, they are used in all 10,000 runs
-
 ```{r}
-library(dplyr)
-sample_n(d, sample.size, replace=TRUE)
-```
-
-
-```{r}
-library(dplyr)
-
-d <- read.csv("./dataset/challenger.csv", header=TRUE, sep=",")
-
-# set seed number to reproduce results
-set.seed(101)
-
-bootstrap <- function(sample.size, total.O.rings, pred.temp, original.data){
-  # simulate temperature at launch
-  data <- sample_n(original.data, sample.size, replace=TRUE)
-  newdata <- data.frame(Temp=data$Temp)
+get.pi.hats <- function(given.temps, given.model, given.formula, sample.size, total.O.rings, which.temp){
   
-  # find pi.hat 
-  m <- glm(formula=O.ring/Number ~ Temp, weights=Number, family=binomial, data=data)
-  pi.hat <- predict(object=m, newdata=newdata, type='response')
-
-  # simulate number of O-rings failure
-  newdata$O.ring <- rbinom(n=sample.size, size=total.O.rings, pi.hat)
-  newdata$Number <- replicate(sample.size, total.O.rings)
-  
-  # estimated model 
-  estimated.m <- glm(formula=O.ring/Number ~ Temp, weights=Number, family=binomial(link=logit), data=newdata)
-  
-  # make predictions
-  estimated.pi.hat <- predict(object=estimated.m, newdata=data.frame(Temp=pred.temp), type='response')
-
-  return(estimated.pi.hat)
-}
-
-# provide the variables to pass in to bootstrap
-# 1. sample size
-sample.size <- 23 
-#sample.size <- nrow(d)
-
-# 2. total number of O-rings
-total.O.rings <- 6
-#total.O.rings <- unique(d$Number)
-
-# 3. provide predicted temperature
-pred.temp <- 31
-
-# 5. run 10000 times
-estimated.pi.hats <- replicate(10000, bootstrap(sample.size, total.O.rings, pred.temp, d))
-quantile(estimated.pi.hats, c(0.05, 0.95))
-```
-
-
-
-```{r}
-library(dplyr)
-
-# remove all objects from current workspace
-rm(list = ls())
-
-# load dataset
-d <- read.csv("./dataset/challenger.csv", header=TRUE, sep=",")
-
-# set seed number to reproduce results
-set.seed(101)
-
-bootstrap <- function(sample.size, total.O.rings, pred.temp, original.data){
-  
-  Temp <- sample(d$Temp, sample.size)
-  pi.hat <- predict(object=m, newdata=data.frame(Temp=Temp), type='response')
+  # simulate dataset from the given model
+  Temp <- sample(given.temps, sample.size, replace=TRUE)
+  pi.hat <- predict(object=given.model, newdata=data.frame(Temp=Temp), type='response')
   O.ring <- rbinom(n=sample.size, size=total.O.rings, pi.hat)
   Number <- replicate(sample.size, total.O.rings)
+  newdata <- data.frame(Temp=Temp, O.ring=O.ring, Number=Number)
   
-  newdata <- data.frame(Temp = Temp,
-                        O.ring = O.ring,
-                        Number = Number)
+  # estimate new model from dataset
+  estimated.model <- suppressWarnings(glm(formula=given.formula, family=binomial(link='logit'), data=newdata))
   
-  # estimated model 
-  estimated.m <- glm(formula=O.ring/Number ~ Temp, weights=Number, family=binomial(link=logit), data=newdata)
-  
-  # make predictions
-  estimated.pi.hat <- predict(object=estimated.m, newdata=data.frame(Temp=pred.temp), type='response')
+  # predict probability of O-rings failure at 
+  estimated.pi.hat <- predict(object=estimated.model, newdata=data.frame(Temp=which.temp), type='response')
   
   return(estimated.pi.hat)
 }
 
+get.ci.w.parametric.bootstrap <- function(given.temps, given.model, given.formula, sample.size, total.O.rings, which.temp, num.datasets, percent.ci) {
+  estimated.pi.hats <- replicate(num.datasets, get.pi.hats(given.temps, given.model, given.formula, sample.size, total.O.rings, which.temp))
+  return(quantile(estimated.pi.hats, c(1-percent.ci, percent.ci)))
+}
+
 # provide the variables to pass in to bootstrap
-# 1. sample size
-sample.size <- 23 
-#sample.size <- nrow(d)
+# 1. sample size = 23
+sample.size <- nrow(d) 
 
-# 2. total number of O-rings
-total.O.rings <- 6
-#total.O.rings <- unique(d$Number)
+# 2. total number of O-rings = 6
+total.O.rings <- unique(d$Number) 
 
-# 3. provide predicted temperature
-pred.temp <- 31
+# 3. provide the model's formula
+given.formula <- paste('O.ring > 0 ~ Temp')
 
-# 4. provide the model
-m <- glm(formula=O.ring/Number ~ Temp, weights=Number, family=binomial, data=d)
+# 4. provide the model with the formula
+given.model <- glm(formula=given.formula, family=binomial(link='logit'), data=d)
 
-# 5. run 10000 times
-estimated.pi.hats <- replicate(10000, bootstrap(sample.size, total.O.rings, pred.temp, d))
-quantile(estimated.pi.hats, c(0.05, 0.95))
-```
-
-```{r}
-bootstrap_coef <- function(temp_data, model, pred_temp) {
-  # 1. simulate large number of datasets from estimated model
-  sample_temps <- sample(x = temp_data, size = 23, replace = TRUE)
-  sample_preds <- predict(object = model, newdata = data.frame(Temp = sample_temps), type = "response")
-
-  #build a dataframe
-  df <- data.frame(temp = sample_temp, 
-             prob_pred = sample_preds
-             )
-  
-  #map function to find predicted class (fail or not fail)
-  df$fail_pred <- unlist(lapply(X = df$prob_pred, FUN = function(x) rbinom(1, 1, x)))
-  
-  #build glm model
-  bootstrap_glm <- glm(formula = fail_pred ~ temp, family = binomial(link=logit), data = df)
-  
-  #predict probability at pred_temp
-  predict(object = bootstrap_glm, newdata = data.frame(temp = pred_temp), type = "response")
-}
-
-est_prob_31 <- replicate(10000, bootstrap_coef(d$Temp, bm1, 31), simplify = FALSE)
-
-est_prob_72 <- replicate(10000, bootstrap_coef(d$Temp, bm1, 72), simplify = FALSE)
-
-quantile(unlist(est_prob_31), c(.05, .95))
-quantile(unlist(est_prob_72), c(.05, .95))
-```
-
-```{r}
-library(boot)
-R <- 10000
-# obtain r-square
-rsq <- function(formula, data, indices) {
-  sample <- data[indices,]
-  fit <- lm(formula, data=sample)
-  return(summary(fit)$r.square)
-}
-# bootstrapping with 10000 replications
-results <- boot(data=d, statistic=rsq, R=R, formula=O.ring > 0 ~ Temp)
-results
-plot(results)
-boot.ci(results, type='bca')
+# 5. use parametric bootstrap to compute 90% confidence intervals
+# for temperature at launch: 31 F
+get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, 
+                              sample.size, total.O.rings, which.temp=temp.launch,
+                              num.datasets=1000, percent.ci=.9)
+# for recommended temperature to launch: 72 F
+get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, 
+                              sample.size, total.O.rings, which.temp=72,
+                              num.datasets=1000, percent.ci=.9)
 ```
 
 # Code 10: quadratic term to model temperature
