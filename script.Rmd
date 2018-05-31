@@ -413,7 +413,7 @@ The author used the 0.05 and 0.95 observed quantiles from the $\hat{\pi}^{*}$ si
 Using the parameteric bootstrap, compute 90% confidence intervals separately at temperature 31 and 72.
 
 ```{r}
-get.pi.hat.star <- function(given.temps, given.model, given.formula, sample.size, total.O.rings, which.temp){
+get.pi.hat.star <- function(given.temps, given.model, given.formula, given.weights, sample.size, total.O.rings, which.temp){
   
   # simulate dataset from the given model
   Temp <- sample(given.temps, sample.size, replace=TRUE)
@@ -423,14 +423,14 @@ get.pi.hat.star <- function(given.temps, given.model, given.formula, sample.size
   newdata <- data.frame(Temp=Temp, O.ring=O.ring, Number=Number)
   
   # estimate new model from dataset
-  estimated.model <- suppressWarnings(glm(formula=given.formula, family=binomial(link='logit'), data=newdata))
+  estimated.model <- suppressWarnings(glm(formula=given.formula, weights=given.weights, family=binomial(link='logit'), data=newdata))
   
   # predict pi.hat.star at which.temp
   return(predict(object=estimated.model, newdata=data.frame(Temp=which.temp), type='response'))
 }
 
-get.ci.w.parametric.bootstrap <- function(given.temps, given.model, given.formula, sample.size, total.O.rings, which.temp, num.datasets, percent.ci) {
-  mult.pi.hat.star <- replicate(num.datasets, get.pi.hat.star(given.temps, given.model, given.formula, sample.size, total.O.rings, which.temp))
+get.ci.w.parametric.bootstrap <- function(given.temps, given.model, given.formula, given.weights, sample.size, total.O.rings, which.temp, num.datasets, percent.ci) {
+  mult.pi.hat.star <- replicate(num.datasets, get.pi.hat.star(given.temps, given.model, given.formula, given.weights, sample.size, total.O.rings, which.temp))
   return(quantile(mult.pi.hat.star, c(1-percent.ci, percent.ci)))
 }
 
@@ -443,17 +443,18 @@ total.O.rings <- unique(d$Number)
 
 # 3. provide the model's formula
 given.formula <- paste('O.ring > 0 ~ Temp')
+given.weights <- NULL
 
 # 4. provide the model with the formula
 given.model <- glm(formula=given.formula, family=binomial(link='logit'), data=d)
 
 # 5. use parametric bootstrap to compute 90% confidence intervals
 # for temperature at launch: 31 F
-get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, 
+get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, given.weights,
                               sample.size, total.O.rings, which.temp=temp.launch,
                               num.datasets=10000, percent.ci=.9)
 # for recommended temperature to launch: 72 F
-get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, 
+get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, given.weights,
                               sample.size, total.O.rings, which.temp=72,
                               num.datasets=10000, percent.ci=.9)
 ```
