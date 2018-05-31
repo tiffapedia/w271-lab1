@@ -27,7 +27,7 @@ set.seed(101)
 # load data
 d <- read.csv("./dataset/challenger.csv", header=TRUE, sep=",")
 # set x-axis min and max for temp, temp at launch, recommended temp to launch
-xlim.min <- 30; xlim.max <- 80; temp.launch <- 31; rec.temp <- 72
+xlim.min <- 31; xlim.max <- 81; temp.launch <- 31; rec.temp <- 72
 ```
 
 # Code 1A: EDA on the structure of the data
