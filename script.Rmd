@@ -22,13 +22,15 @@ library(stargazer)
 opts_chunk$set(tidy.opts=list(width.cutoff=60), tidy=TRUE)
 # remove all objects from current workspace
 rm(list = ls())
+# set seed number to reproduce results
+set.seed(101)
 # load data
 d <- read.csv("./dataset/challenger.csv", header=TRUE, sep=",")
-# set x-axis min and max for temp and temp at launch
-xlim.min <- 31; xlim.max <- 81; temp.launch <- 31
+# set x-axis min and max for temp, temp at launch, recommended temp to launch
+xlim.min <- 31; xlim.max <- 81; temp.launch <- 31; rec.temp <- 72
 ```
 
-# Code 1: Univariate Analysis
+# Code 1A: EDA on the structure of the data
 
 ```{r}
 # structure of data
@@ -39,18 +41,20 @@ summary(d)
 d[!complete.cases(d),]
 ```
 
-## Univariate analysis
-
-https://datascience.ibm.com/exchange/public/entry/view/78ee738ab24e06c942d7b562b29dba30
-
-### O.rings
+# Code 1B: Univariate analysis on O.ring
 
 ```{r}
 # number of O-rings failure
 table(d$O.ring)
 ```
 
-### Temp
+```{r}
+hist(d$O.ring, xlab='Number of O-rings failure', breaks=0:3 - 0.5, ylim=c(0, 1), freq=FALSE)
+lines(density(d$O.ring), col='blue', lwd=2)
+```
+
+
+# Code 1C: Univariate analysis on Temp
 
 ```{r}
 # kernel density of launch temperature
@@ -409,48 +413,50 @@ The author used the 0.05 and 0.95 observed quantiles from the $\hat{\pi}^{*}$ si
 Using the parameteric bootstrap, compute 90% confidence intervals separately at temperature 31 and 72.
 
 ```{r}
-bootstrap_coef <- function(temp_data, model, pred_temp) {
-  # 1. simulate large number of datasets from estimated model
-  sample_temps <- sample(x = temp_data, size = 23, replace = TRUE)
-  sample_preds <- predict(object = model, newdata = data.frame(Temp = sample_temps), type = "response")
-
-  #build a dataframe
-  df <- data.frame(temp = sample_temp, 
-             prob_pred = sample_preds
-             )
+get.pi.hat.star <- function(given.temps, given.model, given.formula, given.weights, sample.size, total.O.rings, which.temp){
   
-  #map function to find predicted class (fail or not fail)
-  df$fail_pred <- unlist(lapply(X = df$prob_pred, FUN = function(x) rbinom(1, 1, x)))
+  # simulate dataset from the given model
+  Temp <- sample(given.temps, sample.size, replace=TRUE)
+  pi.hat <- predict(object=given.model, newdata=data.frame(Temp=Temp), type='response')
+  O.ring <- rbinom(n=sample.size, size=total.O.rings, pi.hat)
+  Number <- replicate(sample.size, total.O.rings)
+  newdata <- data.frame(Temp=Temp, O.ring=O.ring, Number=Number)
   
-  #build glm model
-  bootstrap_glm <- glm(formula = fail_pred ~ temp, family = binomial(link=logit), data = df)
+  # estimate new model from dataset
+  estimated.model <- suppressWarnings(glm(formula=given.formula, weights=given.weights, family=binomial(link='logit'), data=newdata))
   
-  #predict probability at pred_temp
-  predict(object = bootstrap_glm, newdata = data.frame(temp = pred_temp), type = "response")
+  # predict pi.hat.star at which.temp
+  return(predict(object=estimated.model, newdata=data.frame(Temp=which.temp), type='response'))
 }
 
-est_prob_31 <- replicate(10000, bootstrap_coef(d$Temp, bm1, 31), simplify = FALSE)
-
-est_prob_72 <- replicate(10000, bootstrap_coef(d$Temp, bm1, 72), simplify = FALSE)
-
-quantile(unlist(est_prob_31), c(.05, .95))
-quantile(unlist(est_prob_72), c(.05, .95))
-```
-
-```{r}
-library(boot)
-R <- 10000
-# obtain r-square
-rsq <- function(formula, data, indices) {
-  sample <- data[indices,]
-  fit <- lm(formula, data=sample)
-  return(summary(fit)$r.square)
+get.ci.w.parametric.bootstrap <- function(given.temps, given.model, given.formula, given.weights, sample.size, total.O.rings, which.temp, num.datasets, percent.ci) {
+  mult.pi.hat.star <- replicate(num.datasets, get.pi.hat.star(given.temps, given.model, given.formula, given.weights, sample.size, total.O.rings, which.temp))
+  return(quantile(mult.pi.hat.star, c(1-percent.ci, percent.ci)))
 }
-# bootstrapping with 10000 replications
-results <- boot(data=d, statistic=rsq, R=R, formula=O.ring > 0 ~ Temp)
-results
-plot(results)
-boot.ci(results, type='bca')
+
+# provide the variables to pass in to bootstrap
+# 1. sample size = 23
+sample.size <- nrow(d) 
+
+# 2. total number of O-rings = 6
+total.O.rings <- unique(d$Number) 
+
+# 3. provide the model's formula
+given.formula <- paste('O.ring > 0 ~ Temp')
+given.weights <- NULL
+
+# 4. provide the model with the formula
+given.model <- glm(formula=given.formula, family=binomial(link='logit'), data=d)
+
+# 5. use parametric bootstrap to compute 90% confidence intervals
+# for temperature at launch: 31 F
+get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, given.weights,
+                              sample.size, total.O.rings, which.temp=temp.launch,
+                              num.datasets=10000, percent.ci=.9)
+# for recommended temperature to launch: 72 F
+get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, given.weights,
+                              sample.size, total.O.rings, which.temp=72,
+                              num.datasets=10000, percent.ci=.9)
 ```
 
 # Code 10: quadratic term to model temperature
