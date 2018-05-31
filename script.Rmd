@@ -431,7 +431,7 @@ get.pi.hat.star <- function(given.temps, given.model, given.formula, given.weigh
 
 get.ci.w.parametric.bootstrap <- function(given.temps, given.model, given.formula, given.weights, sample.size, total.O.rings, which.temp, num.datasets, percent.ci) {
   mult.pi.hat.star <- replicate(num.datasets, get.pi.hat.star(given.temps, given.model, given.formula, given.weights, sample.size, total.O.rings, which.temp))
-  return(quantile(mult.pi.hat.star, c(1-percent.ci, percent.ci)))
+  return(quantile(mult.pi.hat.star, c((1 - percent.ci)/2, percent.ci + (1 - percent.ci)/2)))
 }
 
 # provide the variables to pass in to bootstrap
