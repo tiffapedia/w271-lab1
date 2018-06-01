@@ -88,11 +88,11 @@ axis(side=2, at=0:2)
 ## Using ggplot (TODO: add abline at 0, format y-axis to show whole numbers, add avg temps)
 
 ```{r}
-ggplot(d, aes(x=Temp, y=O.ring)) + 
-  geom_point() + 
-  labs(title = 'Joint Temperature vs Number of O-Rings Failure Incidents', 
-       x='Temperature (F)', y='Number of O-rings Failure') 
-# + theme(plot.title = element_text(lineheight=1, face="bold", color = "darkred"))
+ggplot(d, aes(x = Temp, y = O.ring)) + 
+  geom_point() +
+  stat_smooth(method = "lm", col = "red") + 
+  labs(title = "Challenger Linear Regression Model (O.ring ~ Temp)") + 
+  theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
 ```
 
 # Code 3: (TODO)
@@ -103,18 +103,24 @@ unique(d$Pressure)
 
 
 ```{r}
-d %>%
-  ggplot(aes(x = factor(O.ring), fill = factor(O.ring))) +
-  geom_bar() +
-  facet_wrap(~Pressure) + 
-  labs(title = 'Count of O-Rings Failure at Different Pressure Levels', y='Count', x='Number of O-rings failure') + 
-  theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
+ggplot(d, aes(x=Temp, y=O.ring)) + geom_point() + 
+  labs(title = 'Joint Temperature vs Number of O-Rings Failure Incidents', 
+       x='Temperature (F)', y='Number of O-rings Failure') +
+    geom_vline(xintercept = c(avg.temp.failure, avg.temp.success, avg.temp, temp.launch), colour=c('red', 'green', 'gray', 'blue')) +
+    geom_hline(yintercept = 0, colour = "black") +
+    scale_y_continuous(breaks=c(0, 1, 2))
+  theme(plot.title = element_text(lineheight=1, face="bold", color = "darkred"))
 ```
 
 ```{r}
-#ggplot(d, aes(x=Pressure, y=O.ring)) + geom_point() + 
-#  labs(title = 'Joint Pressure Versus Number of O-Ring Failures', y='Number of O-ring failures', #x='Pressure (psi') + 
-#  theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
+#Anova Test of different means for O-Ring Temps and Pressures: 
+temp_aov <- aov(Temp ~ O.ring, data = d)
+summary(temp_aov)
+pres_aov <- aov(Pressure ~ O.ring, data = d)
+summary(pres_aov)
+#Magnitude of difference in means for Temp ~ O.ring
+aggregate(d[, 2], list(d$O.ring), mean)
+72.125 - 63.6
 ```
 
 # Code 4A: linear regression model 
