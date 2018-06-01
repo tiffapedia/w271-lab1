@@ -88,23 +88,37 @@ avg.temp.success <- d %>% filter(., O.ring == 0) %>% .$Temp %>% mean(.)
 # average temperature for all flights
 avg.temp <- mean(d$Temp)
 # plot joint temperature vs number of O-rings failure incidents
-plot(main='Joint Temperature vs Frequency of O-rings Failure',
+plot(main='Joint Temperature vs Number of O-rings Failure',
      x=d$Temp, xlab='Temperature (F)', xlim=c(xlim.min,xlim.max),
-     y=d$O.ring, ylab='Frequency of O-rings Failure', yaxt='n', 
+     y=d$O.ring, ylab='Number of O-rings Failure', yaxt='n', 
      panel.first=grid(col="gray", lty="dotted"), pch=20)
 abline(h=0, v=c(avg.temp.failure, avg.temp.success, avg.temp, temp.launch), 
        col=c('black', 'red', 'green', 'gray', 'blue'))
 axis(side=2, at=0:2)
 ```
 
-## Using ggplot (TODO: add abline at 0, format y-axis to show whole numbers, add avg temps)
+## Using ggplot 
 
 ```{r}
-ggplot(d, aes(x = Temp, y = O.ring)) + 
-  geom_point() +
-  stat_smooth(method = "lm", col = "red") + 
-  labs(title = "Challenger Linear Regression Model (O.ring ~ Temp)") + 
-  theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
+# plot pressure vs number of O-rings failure incidents
+ggplot(d, aes(x=Temp, y=O.ring)) + 
+  geom_point() + 
+  labs(title = 'Joint Temperature vs Number of O-Rings Failure Incidents', 
+       x='Temperature (F)', y='Number of O-rings Failure') +
+  geom_vline(xintercept = c(avg.temp.failure, avg.temp.success, avg.temp, temp.launch), colour=c('red', 'green', 'gray', 'blue')) +
+  geom_hline(yintercept = 0, colour = "black") +
+  scale_y_continuous(breaks=c(0, 1, 2)) +
+  theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen"))
+# display difference between average temperature of success and failure incidents
+avg.temp.success - avg.temp.failure
+```
+
+```{r}
+# display means of temperature for each O-ring failure incident (not required)
+# method 1
+aggregate(d[, 2], list(d$O.ring), mean)
+# method 2 (recommended)
+d %>% group_by(d$O.ring) %>% summarise_at(vars(Temp), mean)
 ```
 
 # Code 2B: anova test for difference in temp means for groups of O-rings failure
@@ -114,31 +128,17 @@ ggplot(d, aes(x = Temp, y = O.ring)) +
 summary(aov(Temp ~ O.ring, data=d))
 ```
 
+```{r fig.show='hold', fig.align='center', out.width='49%'}
+d %>% ggplot(aes(x = factor(O.ring), fill = factor(O.ring))) + geom_bar() + facet_wrap(~Pressure) + labs(title = 'Frequency of O-Rings Failure at Different Pressure Levels', y='Count', x='Frequency of O-rings Failure')  
+```
 
 # Code 3A: plot pressure versus number of O-rings failure incidents
 
 ## Using ggplot 
 
 ```{r}
-# plot pressure vs number of O-rings failure incidents
-ggplot(d, aes(x=Temp, y=O.ring)) + geom_point() + 
-  labs(title = 'Joint Temperature vs Number of O-Rings Failure Incidents', 
-       x='Temperature (F)', y='Number of O-rings Failure') +
-    geom_vline(xintercept = c(avg.temp.failure, avg.temp.success, avg.temp, temp.launch), colour=c('red', 'green', 'gray', 'blue')) +
-    geom_hline(yintercept = 0, colour = "black") +
-    scale_y_continuous(breaks=c(0, 1, 2))
-  theme(plot.title = element_text(lineheight=1, face="bold", color = "darkred"))
-```
-
-```{r}
-#Anova Test of different means for O-Ring Temps and Pressures: 
-temp_aov <- aov(Temp ~ O.ring, data = d)
-summary(temp_aov)
-pres_aov <- aov(Pressure ~ O.ring, data = d)
-summary(pres_aov)
-#Magnitude of difference in means for Temp ~ O.ring
-aggregate(d[, 2], list(d$O.ring), mean)
-72.125 - 63.6
+# anova test for difference in pressure means for groups of O-rings failure
+summary(aov(Pressure ~ O.ring, data=d))
 ```
 
 # Code 3B: anova test for difference in pressure means for groups of O-rings failure
@@ -151,56 +151,29 @@ summary(aov(Pressure ~ O.ring, data=d))
 # Code 4A: linear regression model 
 
 ```{r}
-lm1 <- lm(O.ring ~ Temp, data=d)
-summary(lm1)
+ggplot(d, aes(x = Temp, y = O.ring)) + 
+  geom_point() +
+  stat_smooth(method = "lm", col = "red") + 
+  labs(title = "Challenger Linear Regression Model (O.ring ~ Temp)") + 
+  theme(plot.title = element_text(lineheight=1, face="bold", color = "lightseagreen")) 
 ```
 
 
-The ordinary least squares, simple linear regression model, prediction equation is given by 
-
-predicted damage = 3.69841 - 0.04754 * Temp 
+```{r}
+lm1 <- lm(O.ring ~ Temp, data=d)
+summary(lm1)
+```
 
 
 ```{r}
 predict(lm1, data.frame(Temp = 31), type='response')
 ```
 
-The predicted damage can be interpreted as the predicted probability of damage for the given temperature.
-Plugging various temperatures into this equation we get somewhat reasonable predicted probabilities.
-For a temperature of 77, the predicted probability of damage is 0.025. For a temperature of 65,
-the predicted probability is 0.474. Finally, for a temperature of 51, the predicted probability is 0.998.
-As temperature decreases the predicted probability of damage increases. Figure 3.5 shows the fit of the
-simple linear regression model.
-
-Although this appears to be a reasonable prediction equation, it can lead to nonsensical predictions.
-For example, if the temperature is 85, the predicted probability of damage is -0.274. This is nonsense
-since probabilities can never be less than zero. Similarly, any temperature 50 or below will give a
-predicted probability of more than one. Again, this is nonsense. The bounded nature of probabilities is
-not incorporated into the simple linear regression model.
-
-Another clue to the inadequacy of the simple linear model for the Challenger data is shown in the
-pattern of the residuals. Rather than exhibit a random scatter of points, the plot of residuals versus
-temperature (see Figure 3.6) shows two slanted lines.
-
-
 ```{r}
 
 lm1.residuals <- residuals(lm1)
 plot(d$Temp, lm1.residuals, xlab="temperature", ylab="Residuals:SLR model", main="Plot of residuals (SLR model)")
 ```
-
-When ordinary least squares is used to fit a simple linear regression model, the estimates of the
-intercept and slope will be unbiased. That is, on average the intercept and slope estimates give the
-correct values. Since we are violating the equal variance assumption (recall the variance of a binary
-response will change with changes in the mean), the standard errors for the estimates of intercept and
-slope will be larger than they should be. Additionally, the unusual pattern in the residuals indicates
-that the simple linear model does not provide a good fit to the data.
-When variances are unequal, weighted least squares (an extension of ordinary least squares) can be
-used. In essence, observations with large variances are given lower weights and thus have less influence
-on the fit of the simple linear model. Ordinarily the weights are inversely proportional to the variances.
-That is
-
-
 
 # Code 5A: binary logistic regression model 
 
@@ -448,6 +421,7 @@ get.pi.hat.star <- function(given.temps, given.model, given.formula, given.weigh
   
   # simulate dataset from the given model
   Temp <- sample(given.temps, sample.size, replace=TRUE)
+  #Temp <- given.temps
   pi.hat <- predict(object=given.model, newdata=data.frame(Temp=Temp), type='response')
   O.ring <- rbinom(n=sample.size, size=total.O.rings, pi.hat)
   Number <- replicate(sample.size, total.O.rings)
@@ -475,6 +449,8 @@ total.O.rings <- unique(d$Number)
 # 3. provide the model's formula
 given.formula <- paste('O.ring > 0 ~ Temp')
 given.weights <- NULL
+#given.formula <- paste('O.ring/Number ~ Temp')
+#given.weights <- d$Number
 
 # 4. provide the model with the formula
 given.model <- glm(formula=given.formula, family=binomial(link='logit'), data=d)
@@ -489,6 +465,7 @@ get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, gi
                               sample.size, total.O.rings, which.temp=72,
                               num.datasets=10000, percent.ci=.9)
 ```
+
 
 # Code 10: quadratic term to model temperature
 
