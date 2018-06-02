@@ -198,7 +198,7 @@ P(Y_i = 1 | x_i) & = \frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x
 summary(bm2)
 ```
 
-With a p-value of 0.0320, there is sufficient evidence to conclude that outside temperature at the time of the launch does affect the probability of at least one O-ring failing.
+With a p-value of 0.0320, there is sufficient evidence to conclude that outside temperature at the time of the launch does affect the probability of at least one O-ring failure.
 
 ### Validating logistic regression assumptions
 
@@ -229,6 +229,47 @@ abs(rstandard(bm2)) > 3
 6. Observations are independent of one another. Two assumptions need to be tested for this model:
   a. 
   b. 
+
+Thanks to the assumption check we have made, we can continue predicting the probability of at least one O.ring failure at the temperature when they launch the Challenger, 31°F.  Based on our logistic regression model bm2, the probability of at least O-rings failing is approximately $\hat{\pi_i} \approx 0.99.$ If they have waited until 72 °F as suggested, it would have reduced the probability of at least one O-ring failing to approximately 0.16. 
+
+```{r}
+predict(bm2, data.frame(Temp=c(temp.launch, rec.temp)), type='response')
+```
+
+
+```{r}
+bm2.b0 <- bm2$coefficients[1]; bm2.b1 <- bm2$coefficients[2]
+c(100 * (exp(-bm2.b1) - 1), exp(-bm2.b1))
+```
+
+For every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% or a factor of 1.26. 
+
+### 2. odds ratio
+
+$\text{odds ratio} = \frac{odds(x_i + 1)}{odds(x_i)} = \frac{e^{\beta_0 + \beta_1(x_i + 1)}}{e^{\beta_0 + \beta_1(x_i)}} = e^{\beta_1}$
+
+$\hat{\text{odds ratio}} = e^{\hat{\beta_1}} = e^{-0.2321627} = 0.7928171$
+
+```{r}
+# estimated odds ratio
+exp(bm2.b1)
+```
+
+95% CI for estimated odds ratio: $(e^{\hat{\beta_1} - 1.96 \cdot SE(\hat{\beta_1})}, e^{\hat{\beta_1} + 1.96 \cdot SE(\hat{\beta_1})})$
+
+```{r}
+# 95% ci for odds ratio
+get.glm.se <- function(model) sqrt(diag(vcov(model)))
+c(exp(bm2.b1 - 1.96 * get.glm.se(bm2)['Temp']), exp(bm2.b1 + 1.96 * get.glm.se(bm2)['Temp']))
+```
+
+The odds of failure decreases as temperature increases.
+
+This would have decreased the odds of a failure by a factor of 0.006. 
+
+```{r}
+exp(bm2.b1  * (rec.temp - temp.launch))
+```
 
 ## Applying binomial logistic regression
 
