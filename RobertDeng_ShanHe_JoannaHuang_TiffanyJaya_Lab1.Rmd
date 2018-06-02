@@ -171,7 +171,7 @@ bm2 <- glm(formula = O.ring > 0 ~ Temp, family=binomial, data=d)
 bm3 <- glm(formula = O.ring > 0 ~ Pressure, family=binomial, data=d)
 bm4 <- glm(formula = O.ring > 0 ~ factor(Pressure), family=binomial, data=d)
 bm5 <- glm(formula = O.ring > 0 ~ Temp + Pressure, family=binomial, data=d)
-bm6 <- glm(formula = O.ring > 0 ~ Temp + Pressure, family=binomial, data=d)
+bm6 <- glm(formula = O.ring > 0 ~ Temp + factor(Pressure), family=binomial, data=d)
 stargazer(bm1, bm2, bm3, bm4, bm5, bm6, header=FALSE, type='text')
 ```
 
@@ -236,17 +236,15 @@ Thanks to the assumption check we have made, we can continue predicting the prob
 predict(bm2, data.frame(Temp=c(temp.launch, rec.temp)), type='response')
 ```
 
-This is unfortunate because we know that for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% or a factor of 1.26. In other words, the odds of at least one O-ring failure are 79% less in warmer temperature than in colder temperature with the true population effect between 0.64 and 0.98. If only they had waited until the suggested temperature, the catastrophic accident could have been prevented.
+This is unfortunate because we know that for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between 1.02 and 1.56. If only they had waited until the suggested temperature, the catastrophic accident could have been prevented.
 
 ```{r}
 # odds
 bm2.b0 <- bm2$coefficients[1]; bm2.b1 <- bm2$coefficients[2]
 c(100 * (exp(-bm2.b1) - 1), exp(-bm2.b1))
-# odds ratio
-exp(bm2.b1)
-# ci of odds ratio
+# ci of odds 
 get.glm.se <- function(model) sqrt(diag(vcov(model)))
-c(exp(bm2.b1 - 1.96 * get.glm.se(bm2)['Temp']), exp(bm2.b1 + 1.96 * get.glm.se(bm2)['Temp']))
+c(exp(-bm2.b1 - 1.96 * get.glm.se(bm2)['Temp']), exp(-bm2.b1 + 1.96 * get.glm.se(bm2)['Temp']))
 ```
 
 ## Applying binomial logistic regression
@@ -259,7 +257,25 @@ m2 <- glm(formula = O.ring/Number ~ Temp, weights=Number, family=binomial, data=
 m3 <- glm(formula = O.ring/Number ~ Pressure, weights=Number, family=binomial, data=d)
 m4 <- glm(formula = O.ring/Number ~ factor(Pressure), weights=Number, family=binomial, data=d)
 m5 <- glm(formula = O.ring/Number ~ Temp + Pressure, weights=Number, family=binomial, data=d)
-m6 <- glm(formula = O.ring/Number ~ Temp + Pressure, weights=Number, family=binomial, data=d)
+m6 <- glm(formula = O.ring/Number ~ Temp + factor(Pressure), weights=Number, family=binomial, data=d)
 stargazer(m1, m2, m3, m4, m5, m6, header=FALSE, type='text')
+```
+
+Running the likelihood ratio test, we can see that the model with only Temp as the explanatory variable performs the best. We will utilize this to make our prediction at the probability of how many O-rings failed during the launch once the assumptions are met. 
+
+```{r}
+anova(m1, m2, m3, m4, m5, m6, test='Chi')
+```
+
+Since we already addressed most of the assumptions in the previous section, we perform a quick check on the remaining assumptions that require validation, which as can be seen below, passed.
+
+```{r fig.show='hold', fig.align='center', out.width='49%'}
+# assumption test: linearity
+pi <- predict(m2, data.frame(Temp=d$Temp), type='response')
+plot(x=d$Temp, xlab='Temperature (F)', xlim=c(temp.min,temp.max), 
+     y=log(pi/(1-pi)), ylab='logit', 
+     panel.first=grid(col="gray", lty="dotted"), pch=20); 
+# assumption test: influential points
+abs(rstandard(bm2)) > 3
 ```
 
