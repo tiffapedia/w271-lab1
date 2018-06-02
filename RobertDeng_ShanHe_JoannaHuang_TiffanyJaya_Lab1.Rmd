@@ -263,3 +263,9 @@ m6 <- glm(formula = O.ring/Number ~ Temp + Pressure, weights=Number, family=bino
 stargazer(m1, m2, m3, m4, m5, m6, header=FALSE, type='text')
 ```
 
+Running the likelihood ratio test, we can see that the model with only Temp as the explanatory variable performs the best. We will utilize this to make our prediction at the probability of how many O-rings failed during the launch once the assumptions are met. 
+
+```{r}
+anova(m1, m2, m3, m4, m5, m6, test='Chi')
+```
+
