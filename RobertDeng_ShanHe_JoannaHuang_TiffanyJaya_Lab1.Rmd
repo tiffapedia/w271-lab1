@@ -24,8 +24,10 @@ rm(list = ls())
 set.seed(101)
 # load data
 d <- read.csv("./dataset/challenger.csv", header=TRUE, sep=",")
-# set x-axis min and max for temp, temp at launch, recommended temp to launch
-xlim.min <- 31; xlim.max <- 81; temp.launch <- 31; rec.temp <- 72
+# set min and max for temp, temp at launch, recommended temp to launch
+temp.min <- 31; temp.max <- 81; temp.launch <- 31; rec.temp <- 72
+# set min and max for pressure, pressure at launch
+pressure.min <- 50; pressure.max <- 200; pressure.launch <- 200 
 ```
 
 # Introduction
@@ -51,7 +53,7 @@ kable(summary(d))
 d[!complete.cases(d),]
 ```
 
-**Univariate analysis of O.ring**
+## Univariate analysis of O.ring
 ```{r fig.show='hold', fig.align='center', out.width='49%'}
 # frequency of O-rings failure
 table(d$O.ring)
@@ -63,7 +65,7 @@ lines(density(d$O.ring), col='blue', lwd=2)
 
 Since the disaster occurred as a result of O-ring failure, the O.ring variable will be the variable that we are trying to predict. From the density plot of the sample, we can approximate that an event of no O-ring failure is more than twice as likely to occur than a single O-ring failure and seven times more likely to occur than a second O-ring failure. 
 
-**Univariate analysis of Temp**
+## Univariate analysis of Temp
 ```{r fig.show='hold', fig.align='center', out.width='49%'}
 # density of launch temperature
 plot(density(d$Temp), main='Density plot of launch temperature', xlab='Temperature (F)'); rug(d$Temp)
@@ -75,7 +77,7 @@ d %>% filter(Temp == min(Temp))
 
 As a potential cause of the O-ring failure, Temp is another variable that we analyze. Its density distribution is slightly skewed to the left with the mean being smaller than the median (see summary table), meaning they perform more test launches when the temperature is warmer. It is also interesting to note that two O-rings fail at the outlier temperature of 53 °F and the updated leak check pressure of 200 psi. 
 
-**Univariate analysis of Pressure**
+## Univariate analysis of Pressure
 ```{r}
 # frequency of air pressure used in leak check procedure
 table(d$Pressure)
@@ -85,8 +87,7 @@ sapply(unique(d$Pressure), function(p) c(min(which(d$Pressure %in% p)), max(whic
 
 In addition to Temp, we analyze Pressure, the second potential predictor of O-rings failure. The leak check procedure uses air pressure to check the position of the O-ring and changes 3 times: flight 1-6 using an air pressure of 50 psi, flight 7-8 using 100 psi, and flight 9-23 using 200 psi. The increase in air pressure for the leak check procedure is mostly due to a growing desire to ensure that a leak is not masked. Later in the report, we will analyze if the increase in air pressure corresponded to an increase in the number of O-rings failing.
 
-**Bivariate analysis**
-
+## Bivariate analysis
 ```{r fig.show='hold', fig.align='center', out.width='49%'}
 # average temperature for flights with at least one O-rings failure
 avg.temp.failure <- d %>% filter(., O.ring > 0) %>% .$Temp %>% mean(.)
@@ -94,12 +95,15 @@ avg.temp.failure <- d %>% filter(., O.ring > 0) %>% .$Temp %>% mean(.)
 avg.temp.success <- d %>% filter(., O.ring == 0) %>% .$Temp %>% mean(.)
 # average temperature for all flights
 avg.temp <- mean(d$Temp)
-# plot joint temperature vs number of O-rings failure incidents
-plot(main='Joint Temperature vs Frequency of O-rings Failure', x=d$Temp, xlab='Temperature (F)', xlim=c(xlim.min,xlim.max), y=d$O.ring, ylab='Frequency of O-rings Failure', yaxt='n', panel.first=grid(col="gray", lty="dotted"), pch=20)
+# plot temperature vs number of O-rings failure 
+plot(main='Temperature vs Number of O-rings Failure', 
+     x=d$Temp, xlab='Temperature (F)', xlim=c(temp.min,temp.max), 
+     y=d$O.ring, ylab='Number of O-rings Failure', yaxt='n', 
+     panel.first=grid(col="gray", lty="dotted"), pch=20)
 abline(h=0, v=c(avg.temp.failure, avg.temp.success, avg.temp, temp.launch), col=c('black', 'red', 'green', 'gray', 'blue')); axis(side=2, at=0:2)
 ```
 
-When we performed a bivariate analysis of Temp and O.ring variables, we started to notice that if we only looked at the average temperature of flights with at least one O-ring failure (red line), the number of O-rings failing in cold weather is approximately similar to that in the warm weather. It was these specific data points used by two staff members as a reasoning to launch Challenger at 31°F temperature (blue line). But if we took into consideration all previous flights, the average temperature of all 23 launches (gray line) or the average temperature of all successful launches (green line) give us clue that O-rings seem to perform better in warmer temperature. 
+When we performed a bivariate analysis of Temp and O.ring variables, we started to notice that if we only looked at the average temperature of flights with at least one O-ring failure (red line), the number of O-rings failing in cold weather is approximately similar to that in the warm weather. It was these specific data points used by two staff members as a reasoning to launch Challenger at 31°F temperature (blue line). But if we took into consideration all previous flights, the average temperature of all 23 launches (gray line) or the average temperature of all successful launches (green line) give us clue that O-rings seem to perform better in warmer temperature. A one-way anova test confirms our intuition that the mean temperature of successful launches is different than the mean temperature of failure launches with a p-value of 0.01. This provides strong evidence to include temperature in the modeling section. 
 
 ```{r}
 summary(aov(Temp ~ O.ring, data=d))
@@ -107,13 +111,171 @@ summary(aov(Temp ~ O.ring, data=d))
 A one-way anova test confirms our intuition that the mean temperature of successful launches is different than the mean temperature of failure launches with a p-value of 0.01 . This provides strong evidence to include temperature in the modeling section. 
 
 ```{r fig.show='hold', fig.align='center', out.width='49%'}
-d %>% ggplot(aes(x = factor(O.ring), fill = factor(O.ring))) + geom_bar() + facet_wrap(~Pressure) + labs(title = 'Frequency of O-Rings Failure at Different Pressure Levels', y='Count', x='Frequency of O-rings Failure')  
+# plot pressure vs number of O-rings failure 
+plot(main='Leak Check Pressure vs Number of O-rings Failure', 
+     x=d$Pressure, xlab='Pressure (psi)', xlim=c(pressure.min,pressure.max), 
+     y=d$O.ring, ylab='Number of O-rings Failure', yaxt='n', 
+     panel.first=grid(col="gray", lty="dotted"), pch=20)
+abline(h=0, col='black'); axis(side=2, at=0:2)
+# plot number of o-rings failure at different pressure levels
+ggplot(d, aes(x=factor(O.ring), fill=factor(O.ring))) + geom_bar() + facet_wrap(~Pressure) + 
+labs(title = 'Number of O-Rings Failure at Different Pressure Levels', 
+     x='Number of O-rings Failure', y='Count')  
 ```
 
-Plotting with facets reveals that most O.ring failures occurred at 200 psi. The uneven levels of pressure makes this an unattractive explanatory variable to model. To investigate pressures between failed and successful O-ring states, a one-way anova test reveals a p-value of 0.188 in which we fail to reject the null hypothesis of no difference between the 3 pressure states.
+Plotting with facets reveals that most O.ring failures occurred at 200 psi. Given that there are more variables in the 200 psi level than in the 50 and 100 psi levels, we may need to be more cautious when interpreting the model at low pressure levels. To investigate pressures between failed and successful O-ring states, a one-way anova test reveals a p-value of 0.188 in which it fails to reject the null hypothesis of no difference between the 3 pressure states. Pressure might potentially be not a strong candidate as an explanatory variable for O-rings failure.
 
 ```{r}
 summary(aov(Pressure ~ O.ring, data=d))
 ```
 
+# Modeling
+
+## Why not linear regression model
+
+So far, our exploration of the data gives us an intuition that there are more launches tested in warmer climate and in higher leak-check pressure. We would then like to extrapolate from these observations the likelihood that temperature and leak-check pressure play in causing the O-rings failure on January 28th, the day of the launch. 
+
+One way we can predict the number of O-ring failure in the physical condition of the launch (31°F and 200 psi) is to employ the linear regression model. 
+
+```{r fig.show='hold', fig.align='center', out.width='49%'}
+plot(main='Temperature vs Number of O-rings Failure', 
+     x=d$Temp, xlab='Temperature (F)', xlim=c(temp.min,temp.max), 
+     y=d$O.ring, ylab='Number of O-rings Failure', yaxt='n', 
+     panel.first=grid(col="gray", lty="dotted"), pch=20)
+abline(lm(O.ring ~ Temp, data=d)); axis(side=2, at=0:2)
+plot(main='Leak Check Pressure vs Number of O-rings Failure', 
+     x=d$Pressure, xlab='Pressure (psi)', xlim=c(pressure.min,pressure.max), 
+     y=d$O.ring, ylab='Number of O-rings Failure', yaxt='n', 
+     panel.first=grid(col="gray", lty="dotted"), pch=20)
+abline(lm(O.ring ~ Pressure, data=d)); axis(side=2, at=0:2)
+```
+```{r fig.show='hold', fig.align='center', out.width='49%'}
+plot(lm(O.ring ~ Temp, data=d), which=c(1,2))
+```
+
+As shown from the fitted model above, linear regression is an inadequate model for prediction. It fails to meet the assumption of homogeneity of variance and linear relation (see residual vs fitted) as well as the normal distribution of residuals (see QQ plot). In reality, it is not possible for the number of O-ring failure to be negative at higher temperature or lower psi or to be a fraction of a failure because an O-ring either fails or does not fail. Knowing that the O.ring variable is more discrete in nature than continuous, a better alternative is to use the logistic regression model. 
+
+## Applying logistic regression model for a binary response
+
+If we simply wanted to know the probability of at least one O-ring failing, for example, if we wanted to confirm whether or not there is at least one O-ring failure happening during the day of the launch, then we can use the logistic regression model with a binary response (success or failure) to predict that probability. A success occurs when there is at least one O-ring failing (O.ring > 0), and a failure occurs when there are no O-rings failing (O.ring == 0). Unlike linear regression model, logistic regression model will bound the predicted probability within zero and one, which eliminates the possibility of getting nonsensical results. 
+
+To ensure that there is a point of reference to compare the effect of the determinants onto the outcome, we employ a base case that takes in no explanatory variable which we will refer to as bm1. 
+
+We build models that separate out Temp (bm2) and Pressure (bm3, bm4) to better understand their effect individually on the likelihood of at least one O-ring failure. The reason why we separate the model for Pressure further into bm3 and bm4 is because we want to see the effect pressure had collectively on the response variable and at the same time the effect it had when the air pressure changed for the updated leak-check procedure.
+
+In addition, we build bm5 and bm6 to see how Temp and Pressure together affects the probability of at least one O-ring failing. 
+
+```{r warning=FALSE}
+bm1 <- glm(formula = O.ring > 0 ~ 1, family=binomial, data=d)
+bm2 <- glm(formula = O.ring > 0 ~ Temp, family=binomial, data=d)
+bm3 <- glm(formula = O.ring > 0 ~ Pressure, family=binomial, data=d)
+bm4 <- glm(formula = O.ring > 0 ~ factor(Pressure), family=binomial, data=d)
+bm5 <- glm(formula = O.ring > 0 ~ Temp + Pressure, family=binomial, data=d)
+bm6 <- glm(formula = O.ring > 0 ~ Temp + factor(Pressure), family=binomial, data=d)
+stargazer(bm1, bm2, bm3, bm4, bm5, bm6, header=FALSE, type='text')
+```
+
+From the statistical output displayed above, it appears that Temp is a better explanatory variable for the dependent variable than Pressure. We validate our intuition by performing a likelihood ratio test.
+
+```{r}
+anova(bm1, bm2, bm3, bm4, bm5, bm6, test='Chi')
+```
+
+The test shows that Temp is a statistically significant addition to the model, more so by itself than combined with Pressure as the secondary explanatory variable. In the latter section, we will discuss why Pressure might not be a good explanatory variable. For now, we conclude that bm2 is the best estimated model for $\pi_i$ where $\pi_i$ represents the probability of at least one O-ring failing. 
+
+$$\begin{aligned}
+P(Y_i = 1 | x_i) & = \frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x_i}} \\
+                 & \approx \frac{e^{15.043 - 0.232 x_i}}{1 + e^{15.043 - 0.232 x_i}} 
+                 = \hat{\pi_i}
+\end{aligned}$$
+
+* $i$: observation for a single launch
+* $Y_i = 1$: failure launch, at least one O-ring failure
+* $Y_i = 0$: successful launch, no O-ring failure
+* $x_i$: outside temperature in degrees Fahrenheit
+
+```{r}
+summary(bm2)
+```
+
+With a p-value of 0.0320, there is sufficient evidence to conclude that outside temperature at the time of the launch does affect the probability of at least one O-ring failing.
+
+### Validating logistic regression assumptions
+
+Before we base our prediction on this model, we should verify whether or not the assumption for using logistic regression model is met. Not doing so will result in a similar situation that Challenger faced: forming decision based on incorrect findings. 
+
+Logistic regression method assumes that 
+
+1. The dependent variable is binary with a conditional distribution that follows a Bernoulli distribution, which we met since a success occurs when there is at least one O-ring failing (O.ring > 0) and a failure occurs when there are no O-rings failing (O.ring == 0).
+2. There is a linear relationship between the predictor variable, in this case Temp, and the logit of the outcome. By plotting out the predicted probability, we can see that this assumption is also met. The current model is sufficient, and we do not need to apply a 
+
+```{r fig.show='hold', fig.align='center', out.width='49%'}
+pi <- predict(bm2, data.frame(Temp=d$Temp), type='response')
+plot(x=d$Temp, xlab='Temperature (F)', xlim=c(temp.min,temp.max), 
+     y=log(pi/(1-pi)), ylab='logit', 
+     panel.first=grid(col="gray", lty="dotted"), pch=20); 
+```
+
+3. There is no influential values that can alter the quality of the logistic regression model. We can verify that we met this assumption by first plotting the top 3 largest values of Cook’s distance and followed it by filtering any standardized deviance residuals greater than 3; anything greater than 3 are considered influential values. In our case, we do not have any.
+
+```{r fig.show='hold', fig.align='center', out.width='49%'}
+plot(bm2, which=4, id.n=3)
+ggplot(d, aes(Flight, rstandard(bm2))) + geom_point(aes(color=O.ring > 0))
+abs(rstandard(bm2)) > 3
+```
+
+4. There is no high intercorrelations or multicollinearity among explanatory variables. Since our chosen model only has one explanatory variable, Temp, we have also met this assumption.
+5. The outcome variable does not separate the predictor variable completely. We can validate this does not happen because R will give a warning message when it does. In addition, the standard error for the Temp coefficient is not extremely large, and looking at the relationship between the outcome variable and the explanatory variable in the bivariate analysis, we can see that there are failures still occuring at warmer temperature as well as cooler ones. 
+6. Observations are independent of one another. Two assumptions need to be tested for this model:
+  a. 
+  b. 
+
+Thanks to the assumption check we have made, we can continue predicting the probability of at least one O.ring failure with greater certainty.  Based on our logistic regression model bm2, the probability of at least O-rings failing when they launch the Challenger at 31°F is approximately $\hat{\pi_i} \approx 0.99.$ If they have waited until 72 °F as suggested, it would have reduced the probability of at least one O-ring failing to approximately 0.16. 
+
+```{r}
+predict(bm2, data.frame(Temp=c(temp.launch, rec.temp)), type='response')
+```
+
+This is unfortunate because we know that for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between 1.02 and 1.56. If only they had waited until the suggested temperature, the catastrophic accident could have been prevented.
+
+```{r}
+# odds
+bm2.b0 <- bm2$coefficients[1]; bm2.b1 <- bm2$coefficients[2]
+c(100 * (exp(-bm2.b1) - 1), exp(-bm2.b1))
+# ci of odds 
+get.glm.se <- function(model) sqrt(diag(vcov(model)))
+c(exp(-bm2.b1 - 1.96 * get.glm.se(bm2)['Temp']), exp(-bm2.b1 + 1.96 * get.glm.se(bm2)['Temp']))
+```
+
+## Applying binomial logistic regression
+
+Now that we have confirmed that at least one O-ring failed during the launch, we can go one step further and determine the probability of how many of the O-ring did fail. We will again employ the base case with no explanatory variable as a reference point (m1), separate out Temp (m2) and Pressure (m3, m4) in their own respective model to better understand the effect, and combined them as well (m5, m6) to see which model can best estimate the probability of how many O-rings failed.
+
+```{r warning=FALSE}
+m1 <- glm(formula = O.ring/Number ~ 1, weights=Number, family=binomial, data=d)
+m2 <- glm(formula = O.ring/Number ~ Temp, weights=Number, family=binomial, data=d)
+m3 <- glm(formula = O.ring/Number ~ Pressure, weights=Number, family=binomial, data=d)
+m4 <- glm(formula = O.ring/Number ~ factor(Pressure), weights=Number, family=binomial, data=d)
+m5 <- glm(formula = O.ring/Number ~ Temp + Pressure, weights=Number, family=binomial, data=d)
+m6 <- glm(formula = O.ring/Number ~ Temp + factor(Pressure), weights=Number, family=binomial, data=d)
+stargazer(m1, m2, m3, m4, m5, m6, header=FALSE, type='text')
+```
+
+Running the likelihood ratio test, we can see that the model with only Temp as the explanatory variable performs the best. We will utilize this to make our prediction at the probability of how many O-rings failed during the launch once the assumptions are met. 
+
+```{r}
+anova(m1, m2, m3, m4, m5, m6, test='Chi')
+```
+
+Since we already addressed most of the assumptions in the previous section, we perform a quick check on the remaining assumptions that require validation, which as can be seen below, passed.
+
+```{r fig.show='hold', fig.align='center', out.width='49%'}
+# assumption test: linearity
+pi <- predict(m2, data.frame(Temp=d$Temp), type='response')
+plot(x=d$Temp, xlab='Temperature (F)', xlim=c(temp.min,temp.max), 
+     y=log(pi/(1-pi)), ylab='logit', 
+     panel.first=grid(col="gray", lty="dotted"), pch=20); 
+# assumption test: influential points
+abs(rstandard(bm2)) > 3
+```
 
