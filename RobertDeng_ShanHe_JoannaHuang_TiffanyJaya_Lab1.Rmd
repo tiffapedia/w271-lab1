@@ -155,3 +155,67 @@ plot(lm(O.ring ~ Temp, data=d), which=c(1,2))
 
 As shown from the fitted model above, linear regression is an inadequate model for prediction. It fails to meet the assumption of homogeneity of variance and linear relation (see residual vs fitted) as well as the normal distribution of residuals (see QQ plot). In reality, it is not possible for the number of O-ring failure to be negative at higher temperature or lower psi or to be a fraction of a failure because an O-ring either fails or does not fail. Knowing that the O.ring variable is more discrete in nature than continuous, a better alternative is to use the logistic regression model. 
 
+## Applying logistic regression model for a binary response
+
+If we simply wanted to know the probability of at least one O-ring failing, for example, if we wanted to confirm whether or not there is at least one O-ring failure happening during the day of the launch, then we can use the logistic regression model with a binary response (success or failure) to predict that probability. A success occurs when there is at least one O-ring failing (O.ring > 0), and a failure occurs when there are no O-rings failing (O.ring == 0). Unlike linear regression model, logistic regression model will bound the predicted probability within zero and one, which eliminates the possibility of getting nonsensical results. 
+
+To ensure that there is a point of reference to compare the effect of the determinants onto the outcome, we employ a base case that takes in no explanatory variable which we will refer to as bm1. 
+
+We build models that separate out Temp (bm2) and Pressure (bm3, bm4) to better understand their effect individually on the likelihood of at least one O-ring failure. The reason why we separate the model for Pressure further into bm3 and bm4 is because we want to see the effect pressure had collectively on the response variable and at the same time the effect it had when the air pressure changed for the updated leak-check procedure.
+
+In addition, we build bm5 and bm6 to see how Temp and Pressure together affects the probability of at least one O-ring failing. 
+
+```{r warning=FALSE}
+bm1 <- glm(formula = O.ring > 0 ~ 1, family=binomial, data=d)
+bm2 <- glm(formula = O.ring > 0 ~ Temp, family=binomial, data=d)
+bm3 <- glm(formula = O.ring > 0 ~ Pressure, family=binomial, data=d)
+bm4 <- glm(formula = O.ring > 0 ~ factor(Pressure), family=binomial, data=d)
+bm5 <- glm(formula = O.ring > 0 ~ Temp + Pressure, family=binomial, data=d)
+bm6 <- glm(formula = O.ring > 0 ~ Temp + Pressure, family=binomial, data=d)
+stargazer(bm1, bm2, bm3, bm4, bm5, bm6, header=FALSE, type='text')
+```
+
+From the statistical output displayed above, it appears that Temp is a better explanatory variable for the dependent variable than Pressure. We validate our intuition by performing a likelihood ratio test.
+
+```{r}
+anova(bm1, bm2, bm3, bm4, bm5, bm6, test='Chi')
+```
+
+The test shows that Temp is a statistically significant addition to the model, more so by itself than combined with Pressure as the secondary explanatory variable. In the latter section, we will discuss why Pressure might not be a good explanatory variable. For now, we conclude that bm2 is the best estimated model for $\pi_i$ where $\pi_i$ represents the probability of at least one O-ring failing. 
+
+$$\begin{aligned}
+P(Y_i = 1 | x_i) & = \frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x_i}} \\
+                 & \approx \frac{e^{15.043 - 0.232 x_i}}{1 + e^{15.043 - 0.232 x_i}} 
+                 = \hat{\pi_i}
+\end{aligned}$$
+
+* $i$: observation for a single launch
+* $Y_i = 1$: failure launch, at least one O-ring failure
+* $Y_i = 0$: successful launch, no O-ring failure
+* $x_i$: outside temperature in degrees Fahrenheit
+
+```{r}
+summary(bm2)
+```
+
+With a p-value of 0.0320, there is sufficient evidence to conclude that outside temperature at the time of the launch does affect the probability of at least one O-ring failing.
+
+### Validating logistic regression assumptions
+
+Before we base our prediction on this model, we should verify whether or not the assumption for using logistic regression model is met. Not doing so will result in a similar situation that Challenger faced: forming decision based on incorrect findings. 
+
+Logistic regression method assumes that 
+
+1. The dependent variable is binary with a conditional distribution that follows a Bernoulli distribution, which we met since a success occurs when there is at least one O-ring failing (O.ring > 0) and a failure occurs when there are no O-rings failing (O.ring == 0).
+2. There is a linear relationship between the predictor variable, in this case Temp, and the logit of the outcome. By plotting out the predicted probability, we can see that this assumption is also met. The current model is sufficient, and we do not need to apply a 
+
+```{r}
+plot(main='Temperature vs Number of O-rings Failure', 
+     x=d$Temp, xlab='Temperature (F)', xlim=c(temp.min,temp.max), 
+     y=d$O.ring, ylab='Number of O-rings Failure', yaxt='n', 
+     panel.first=grid(col="gray", lty="dotted"), pch=20)
+abline(lm(O.ring ~ Temp, data=d))
+```
+
+
+
