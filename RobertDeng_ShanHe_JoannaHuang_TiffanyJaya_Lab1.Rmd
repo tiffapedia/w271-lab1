@@ -230,3 +230,17 @@ abs(rstandard(bm2)) > 3
   a. 
   b. 
 
+## Applying binomial logistic regression
+
+Now that we have confirmed that at least one O-ring failed during the launch, we can go one step further and determine the probability of how many of the O-ring did fail. We will again employ the base case with no explanatory variable as a reference point (m1), separate out Temp (m2) and Pressure (m3, m4) in their own respective model to better understand the effect, and combined them as well (m5, m6) to see which model can best estimate the probability of how many O-rings failed.
+
+```{r warning=FALSE}
+m1 <- glm(formula = O.ring/Number ~ 1, weights=Number, family=binomial, data=d)
+m2 <- glm(formula = O.ring/Number ~ Temp, weights=Number, family=binomial, data=d)
+m3 <- glm(formula = O.ring/Number ~ Pressure, weights=Number, family=binomial, data=d)
+m4 <- glm(formula = O.ring/Number ~ factor(Pressure), weights=Number, family=binomial, data=d)
+m5 <- glm(formula = O.ring/Number ~ Temp + Pressure, weights=Number, family=binomial, data=d)
+m6 <- glm(formula = O.ring/Number ~ Temp + Pressure, weights=Number, family=binomial, data=d)
+stargazer(m1, m2, m3, m4, m5, m6, header=FALSE, type='text')
+```
+
