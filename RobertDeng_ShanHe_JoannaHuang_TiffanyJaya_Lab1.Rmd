@@ -269,3 +269,15 @@ Running the likelihood ratio test, we can see that the model with only Temp as t
 anova(m1, m2, m3, m4, m5, m6, test='Chi')
 ```
 
+Since we already addressed most of the assumptions in the previous section, we perform a quick check on the remaining assumptions that require validation, which as can be seen below, passed.
+
+```{r fig.show='hold', fig.align='center', out.width='49%'}
+# assumption test: linearity
+pi <- predict(m2, data.frame(Temp=d$Temp), type='response')
+plot(x=d$Temp, xlab='Temperature (F)', xlim=c(temp.min,temp.max), 
+     y=log(pi/(1-pi)), ylab='logit', 
+     panel.first=grid(col="gray", lty="dotted"), pch=20); 
+# assumption test: influential points
+abs(rstandard(bm2)) > 3
+```
+
