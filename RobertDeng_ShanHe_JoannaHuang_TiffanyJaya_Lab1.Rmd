@@ -225,10 +225,29 @@ abs(rstandard(bm2)) > 3
 ```
 
 4. There is no high intercorrelations or multicollinearity among explanatory variables. Since our chosen model only has one explanatory variable, Temp, we have also met this assumption.
-5. The outcome variable does not separate the predictor variable completely. We can validate this does not happen because R will give a warning message when it does. In addition, the standard error for the Temp coefficient is not extremely large, and looking at the relationship between the outcome variable and the explanatory variable, we can see that there are failures still occuring at warmer temperature as well as cooler ones. 
+5. The outcome variable does not separate the predictor variable completely. We can validate this does not happen because R will give a warning message when it does. In addition, the standard error for the Temp coefficient is not extremely large, and looking at the relationship between the outcome variable and the explanatory variable in the bivariate analysis, we can see that there are failures still occuring at warmer temperature as well as cooler ones. 
 6. Observations are independent of one another. Two assumptions need to be tested for this model:
   a. 
   b. 
+
+Thanks to the assumption check we have made, we can continue predicting the probability of at least one O.ring failure with greater certainty.  Based on our logistic regression model bm2, the probability of at least O-rings failing when they launch the Challenger at 31°F is approximately $\hat{\pi_i} \approx 0.99.$ If they have waited until 72 °F as suggested, it would have reduced the probability of at least one O-ring failing to approximately 0.16. 
+
+```{r}
+predict(bm2, data.frame(Temp=c(temp.launch, rec.temp)), type='response')
+```
+
+This is unfortunate because we know that for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% or a factor of 1.26. In other words, the odds of at least one O-ring failure are 79% less in warmer temperature than in colder temperature with the true population effect between 0.64 and 0.98. If only they had waited until the suggested temperature, the catastrophic accident could have been prevented.
+
+```{r}
+# odds
+bm2.b0 <- bm2$coefficients[1]; bm2.b1 <- bm2$coefficients[2]
+c(100 * (exp(-bm2.b1) - 1), exp(-bm2.b1))
+# odds ratio
+exp(bm2.b1)
+# ci of odds ratio
+get.glm.se <- function(model) sqrt(diag(vcov(model)))
+c(exp(bm2.b1 - 1.96 * get.glm.se(bm2)['Temp']), exp(bm2.b1 + 1.96 * get.glm.se(bm2)['Temp']))
+```
 
 ## Applying binomial logistic regression
 
