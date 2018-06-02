@@ -142,12 +142,12 @@ plot(main='Temperature vs Number of O-rings Failure',
      x=d$Temp, xlab='Temperature (F)', xlim=c(temp.min,temp.max), 
      y=d$O.ring, ylab='Number of O-rings Failure', yaxt='n', 
      panel.first=grid(col="gray", lty="dotted"), pch=20)
-abline(lm(O.ring ~ Temp, data=d))
+abline(lm(O.ring ~ Temp, data=d)); axis(side=2, at=0:2)
 plot(main='Leak Check Pressure vs Number of O-rings Failure', 
      x=d$Pressure, xlab='Pressure (psi)', xlim=c(pressure.min,pressure.max), 
      y=d$O.ring, ylab='Number of O-rings Failure', yaxt='n', 
      panel.first=grid(col="gray", lty="dotted"), pch=20)
-abline(lm(O.ring ~ Pressure, data=d))
+abline(lm(O.ring ~ Pressure, data=d)); axis(side=2, at=0:2)
 ```
 ```{r fig.show='hold', fig.align='center', out.width='49%'}
 plot(lm(O.ring ~ Temp, data=d), which=c(1,2))
@@ -209,13 +209,24 @@ Logistic regression method assumes that
 1. The dependent variable is binary with a conditional distribution that follows a Bernoulli distribution, which we met since a success occurs when there is at least one O-ring failing (O.ring > 0) and a failure occurs when there are no O-rings failing (O.ring == 0).
 2. There is a linear relationship between the predictor variable, in this case Temp, and the logit of the outcome. By plotting out the predicted probability, we can see that this assumption is also met. The current model is sufficient, and we do not need to apply a 
 
-```{r}
-plot(main='Temperature vs Number of O-rings Failure', 
-     x=d$Temp, xlab='Temperature (F)', xlim=c(temp.min,temp.max), 
-     y=d$O.ring, ylab='Number of O-rings Failure', yaxt='n', 
-     panel.first=grid(col="gray", lty="dotted"), pch=20)
-abline(lm(O.ring ~ Temp, data=d))
+```{r fig.show='hold', fig.align='center', out.width='49%'}
+pi <- predict(bm2, data.frame(Temp=d$Temp), type='response')
+plot(x=d$Temp, xlab='Temperature (F)', xlim=c(temp.min,temp.max), 
+     y=log(pi/(1-pi)), ylab='logit', 
+     panel.first=grid(col="gray", lty="dotted"), pch=20); 
 ```
 
+3. There is no influential values that can alter the quality of the logistic regression model. We can verify that we met this assumption by first plotting the top 3 largest values of Cook’s distance and followed it by filtering any standardized deviance residuals greater than 3; anything greater than 3 are considered influential values. In our case, we do not have any.
 
+```{r fig.show='hold', fig.align='center', out.width='49%'}
+plot(bm2, which=4, id.n=3)
+ggplot(d, aes(Flight, rstandard(bm2))) + geom_point(aes(color=O.ring > 0))
+abs(rstandard(bm2)) > 3
+```
+
+4. There is no high intercorrelations or multicollinearity among explanatory variables. Since our chosen model only has one explanatory variable, Temp, we have also met this assumption.
+5. The outcome variable does not separate the predictor variable completely. We can validate this does not happen because R will give a warning message when it does. In addition, the standard error for the Temp coefficient is not extremely large, and looking at the relationship between the outcome variable and the explanatory variable, we can see that there are failures still occuring at warmer temperature as well as cooler ones. 
+6. Observations are independent of one another. Two assumptions need to be tested for this model:
+  a. 
+  b. 
 
