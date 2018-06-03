@@ -35,6 +35,8 @@ On January 28, 1986, the space shuttle Challenger exploded after a mere 73 secon
 
 Based on this background information, we seek to retrospectively analyze and predict how the specific conditions of temperature and pressure may have led to the Challenger explosion. Using logistic regression modelling, we answer the question: Were the temperature at the time of the launch or the change in the leak check procedure contributing factors to the O-rings failure, and consequently the structural breakdown of the space shuttle Challenger?
 
+After a series of analyses, we chose a logistic regression model $logit(Y) = \beta_0 + \beta_1 * Temp$ which tells us that for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26%. 
+
 # EDA
 In order for us to have a better understanding of this relationship, we explored the dataset that contains 23 observations, one for each of the prior flights Challenger took before its final one. Looking at the dataset, there are five numerical attributes with no missing values:
 
@@ -75,7 +77,7 @@ boxplot(d$Temp, main='Boxplot of launch temperature', xlab='Temperature (F)')
 d %>% filter(Temp == min(Temp)) 
 ```
 
-As a potential cause of the O-ring failure, Temp is another variable that we analyze. Its density distribution is slightly skewed to the left with the mean being smaller than the median (see summary table), meaning they perform more test launches when the temperature is warmer. It is also interesting to note that two O-rings fail at the outlier temperature of 53 °F and the updated leak check pressure of 200 psi. 
+As a potential cause of the O-ring failure, Temp is another variable that we analyze. Its density distribution is slightly negatively skewed with the mean being smaller than the median (see summary table), meaning they perform more test launches when the temperature is warmer. It is also interesting to note that two O-rings fail at the outlier temperature of 53 °F and the updated leak check pressure of 200 psi. 
 
 ## Univariate analysis of Pressure
 ```{r}
@@ -103,7 +105,7 @@ plot(main='Temperature vs Number of O-rings Failure',
 abline(h=0, v=c(avg.temp.failure, avg.temp.success, avg.temp, temp.launch), col=c('black', 'red', 'green', 'gray', 'blue')); axis(side=2, at=0:2)
 ```
 
-When we performed a bivariate analysis of Temp and O.ring variables, we started to notice that if we only looked at the average temperature of flights with at least one O-ring failure (red line), the number of O-rings failing in cold weather is approximately similar to that in the warm weather. It was these specific data points used by two staff members as a reasoning to launch Challenger at 31°F temperature (blue line). But if we took into consideration all previous flights, the average temperature of all 23 launches (gray line) or the average temperature of all successful launches (green line) give us clue that O-rings seem to perform better in warmer temperature. A one-way anova test confirms our intuition that the mean temperature of successful launches is different than the mean temperature of failure launches with a p-value of 0.01. This provides strong evidence to include temperature in the modeling section. 
+When we performed a bivariate analysis of Temp and O.ring variables, we started to notice that if we only looked at the average temperature of flights with at least one O-ring failure (red line), the number of O-rings failing in cold weather is approximately the same to that in the warm weather. It was these specific data points used by two staff members as a reasoning to launch Challenger at 31°F temperature (blue line). But if we took into consideration all previous flights, the average temperature of all 23 launches (gray line) or the average temperature of all successful launches (green line) give us clue that O-rings seem to perform better in warmer temperature. A one-way anova test confirms our intuition that the mean temperature of successful launches is different than the mean temperature of failure launches with a p-value of 0.01. This provides strong evidence to include temperature in the modeling section. 
 
 ```{r}
 summary(aov(Temp ~ O.ring, data=d))
@@ -123,7 +125,7 @@ labs(title = 'Number of O-Rings Failure at Different Pressure Levels',
      x='Number of O-rings Failure', y='Count')  
 ```
 
-Plotting with facets reveals that most O.ring failures occurred at 200 psi. Given that there are more variables in the 200 psi level than in the 50 and 100 psi levels, we may need to be more cautious when interpreting the model at low pressure levels. To investigate pressures between failed and successful O-ring states, a one-way anova test reveals a p-value of 0.188 in which it fails to reject the null hypothesis of no difference between the 3 pressure states. Pressure might potentially be not a strong candidate as an explanatory variable for O-rings failure.
+Plotting with facets reveals that most O.ring failures occurred at 200 psi. Given that there are more variables in the 200 psi level than in the 50 and 100 psi levels, we may need to be more cautious when interpreting the model at low pressure levels. To investigate pressures between failed and successful O-ring states, an one-way anova test reveals a p-value of 0.188 in which it fails to reject the null hypothesis of no difference between the 3 pressure states. Pressure might potentially not be a strong candidate as an explanatory variable for O-rings failure.
 
 ```{r}
 summary(aov(Pressure ~ O.ring, data=d))
@@ -153,7 +155,7 @@ abline(lm(O.ring ~ Pressure, data=d)); axis(side=2, at=0:2)
 plot(lm(O.ring ~ Temp, data=d), which=c(1,2))
 ```
 
-As shown from the fitted model above, linear regression is an inadequate model for prediction. It fails to meet the assumption of homogeneity of variance and linear relation (see residual vs fitted) as well as the normal distribution of residuals (see QQ plot). In reality, it is not possible for the number of O-ring failure to be negative at higher temperature or lower psi or to be a fraction of a failure because an O-ring either fails or does not fail. Knowing that the O.ring variable is more discrete in nature than continuous, a better alternative is to use the logistic regression model. 
+As shown from the fitted model above, linear regression is an inadequate model for prediction. It fails to meet the assumption of homogeneity of variance and linear relation (see residual vs fitted) as well as the normal distribution of residuals (see QQ plot). In reality, it is not possible for the number of O-ring failure to be negative at higher temperature or lower psi or to be a fraction of a failure because an O-ring either fails or does not fail. Knowing that the O.ring variable is discrete in nature rather than continuous, a better alternative is to use the logistic regression model. 
 
 ## Applying logistic regression model for a binary response
 
@@ -265,7 +267,7 @@ abs(rstandard(bm2)) > 3
 
 Pg 947 mentions increases in pressure tests from 50 to 200 which could have caused “blow-holes” leading to thermal distress and O-ring failure. This shows that previous flights might have had more durable O-rings compared to flights after. To alleviate these concerns, addition analysis to investigate the effect of increased pressure on thermal distress (blow holes, erosion) could show that there wasn't an signficant impact.
 
-Thanks to the assumption check we have made, we can continue predicting the probability of at least one O-ring failure with greater certainty.  Based on our logistic regression model bm2, the probability of at least one O-ring failing when they launch the Challenger at 31°F is approximately $\hat{\pi_i} \approx 0.99$ with 90% confidence interval of (0.999613, 1.000000) found using parametric bootstrap. If they have waited until 72 °F as suggested, it would have reduced the probability of at least one O-ring failing to approximately 0.16 with the parametric bootstrap's 90% confidence interval of (0.3968449, 0.9763451). 
+Thanks to the assumption check we have made, we can continue predicting the probability of at least one O-ring failure with greater certainty.  Based on our logistic regression model bm2, the probability of at least one O-ring failing when they launch the Challenger at 31°F is approximately 0.99 with 90% confidence interval of (0.999613, 1.000000) found using parametric bootstrap. If they have waited until 72 °F as suggested, it would have reduced the probability of at least one O-ring failing to approximately 0.16 with the parametric bootstrap's 90% confidence interval of (0.3968449, 0.9763451). 
 
 ```{r warning=FALSE}
 predict(bm2, data.frame(Temp=c(temp.launch, rec.temp)), type='response')
@@ -316,7 +318,9 @@ get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, gi
                               num.datasets=10000, percent.ci=.9)
 ```
 
-This is unfortunate because we know that for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between 1.02 and 1.56. If only they had waited until the suggested temperature, the catastrophic accident could have been prevented.
+By using bootstraping to resample the observed data, we were able to calculate a confidence interval of our sample estimates without assuming any specific distribution for the sample estimates. Although such confidence intervals can also be calculated using Wald intervals, such method is prone of violation to the assumption of a normal distribution. 
+
+To interpret our model, as we can see below, for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between 1.02 and 1.56. 
 
 ```{r}
 # odds
@@ -359,6 +363,13 @@ As we can see, the confidence interval is much wider at low temperatures than hi
 
 It seems like the expected number of failures starts dropping in the mid 50's (temperature) and approaches zero at around 80 degrees.
 
+# Conclusion
+
+From the observed data sample, our analyses showed that the temperature at launch was a significant factor in predicting the O ring failure. We chose to use a logistic regression model after explaining the inadequacy of using a linear regression in this case. And with our chosen model, $logit(Y) = \beta_0 + \beta_1 * Temp$, we saw that for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between 1.02 and 1.56. We also used bootstraping which estimated the probability of O ring failure at launch when it's 31 F to be between 0.9996 and 1.0000. According to our model, such probability when it's 72 F would be in the range between 0.3968 and 0.9763. 
+
+
+
+
 ## Applying binomial logistic regression
 
 Now that we have confirmed that at least one O-ring failed during the launch, we can go one step further and determine the probability of how many of the O-ring did fail. We will again employ the base case with no explanatory variable as a reference point (m1), separate out Temp (m2) and Pressure (m3, m4) in their own respective model to better understand the effect, and combined them as well (m5, m6) to see which model can best estimate the probability of how many O-rings failed.
@@ -390,4 +401,7 @@ plot(x=d$Temp, xlab='Temperature (F)', xlim=c(temp.min,temp.max),
 # assumption test: influential points
 abs(rstandard(bm2)) > 3
 ```
+
+
+
 
