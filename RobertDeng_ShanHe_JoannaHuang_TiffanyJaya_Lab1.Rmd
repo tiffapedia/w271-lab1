@@ -200,6 +200,38 @@ summary(bm2)
 
 With a p-value of 0.0320, there is sufficient evidence to conclude that outside temperature at the time of the launch does affect the probability of at least one O-ring failing.
 
+To further confirm that Pressure is not a significant explanatory variable, we look at the deviance and AIC of the models.
+
+```{r}
+# Deviance
+print(deviance(bm2))
+
+print(deviance(bm5))
+
+print(deviance(bm2)-deviance(bm5))
+```
+
+Looking at the residual deviance, we can see how much the estimated probabilities from our model deviates from the observed proportions of success in the model. Thus, the lower the deviance, the better the fit. Given that deviance decreases as you add more variables, looking at the deviance value itself does not demonstrate significance. Thus we need to test the significance of the difference between deviance.
+
+```{r}
+anova(bm2,bm5,test='Chi')
+```
+
+According to the likelihood ratio test, Pressure is not a statistically significant addition to the model.
+
+AIC is another way to assess the quality of our models with consideration of penalizing more complexity. Since our model has a lower AIC, this further confirms our choice to remove Pressure as an explanatory variable.
+
+```{r}
+# AIC
+bm2$aic
+
+bm5$aic
+```
+
+Thus, we conclude that bm2 is the best estimated model for $\pi_i$ where $\pi_i$ represents the probability of at least one O-ring failing. (edited)
+
+The potential issue of removing Pressure is that given a larger dataset with more data points at each psi level, there may be an effect that is not represented within our current model.
+
 ### Validating logistic regression assumptions
 
 Before we base our prediction on this model, we should verify whether or not the assumption for using logistic regression model is met. Not doing so will result in a similar situation that Challenger faced: forming decision based on incorrect findings. 
