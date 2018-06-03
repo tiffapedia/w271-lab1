@@ -203,6 +203,38 @@ summary(bm2)
 
 With a p-value of 0.0320, there is sufficient evidence to conclude that outside temperature at the time of the launch does affect the probability of at least one O-ring failing.
 
+To further confirm that Pressure is not a significant explanatory variable, we look at the deviance and AIC of the models.
+
+```{r}
+# Deviance
+print(deviance(bm2))
+
+print(deviance(bm5))
+
+print(deviance(bm2)-deviance(bm5))
+```
+
+Looking at the residual deviance, we can see how much the estimated probabilities from our model deviates from the observed proportions of success in the model. Thus, the lower the deviance, the better the fit. Given that deviance decreases as you add more variables, looking at the deviance value itself does not demonstrate significance. Thus we need to test the significance of the difference between deviance.
+
+```{r}
+anova(bm2,bm5,test='Chi')
+```
+
+According to the likelihood ratio test, Pressure is not a statistically significant addition to the model.
+
+AIC is another way to assess the quality of our models with consideration of penalizing more complexity. Since our model has a lower AIC, this further confirms our choice to remove Pressure as an explanatory variable.
+
+```{r}
+# AIC
+bm2$aic
+
+bm5$aic
+```
+
+Thus, we conclude that bm2 is the best estimated model for $\pi_i$ where $\pi_i$ represents the probability of at least one O-ring failing. (edited)
+
+The potential issue of removing Pressure is that given a larger dataset with more data points at each psi level, there may be an effect that is not represented within our current model.
+
 ### Validating logistic regression assumptions
 
 Before we base our prediction on this model, we should verify whether or not the assumption for using logistic regression model is met. Not doing so will result in a similar situation that Challenger faced: forming decision based on incorrect findings. 
@@ -294,3 +326,73 @@ c(100 * (exp(-bm2.b1) - 1), exp(-bm2.b1))
 get.glm.se <- function(model) sqrt(diag(vcov(model)))
 c(exp(-bm2.b1 - 1.96 * get.glm.se(bm2)['Temp']), exp(-bm2.b1 + 1.96 * get.glm.se(bm2)['Temp']))
 ```
+
+With a selected model bm2, we can then investigate how the estimated probability changes over different tempratures. 
+
+```{r}
+# Plot estimated pi
+curve(expr = predict(object = bm2, newdata = data.frame(Temp = x), type = "response"),
+                                                                        xlim = c(31,81),
+      xlab = "Temperature", ylab = "Estimated Probability of Failure")
+
+# Create C.I. function
+conf.int <- function(newdata, mod, alpha) {
+  linear.pred <- predict(object = mod, newdata= newdata, type = 'link', se = TRUE)
+  CI.lin.pred.lower <- linear.pred$fit - qnorm(p = 1-alpha/2) * linear.pred$se
+  CI.lin.pred.upper <- linear.pred$fit + qnorm(p = 1-alpha/2) * linear.pred$se
+  CI.pi.lower <- exp(CI.lin.pred.lower) / (1+exp(CI.lin.pred.lower))
+  CI.pi.upper <- exp(CI.lin.pred.upper) / (1+exp(CI.lin.pred.upper))
+  list(lower = CI.pi.lower, upper = CI.pi.upper)
+}
+
+# Plot confidence interval
+curve(expr = conf.int(newdata=data.frame(Temp=x), mod = bm2, alpha = 0.05)$lower,
+                      col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
+curve(expr = conf.int(newdata=data.frame(Temp=x), mod = bm2, alpha = 0.05)$upper,
+                      col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
+```
+
+Since we assume this to be a binomial distribution, we can also compute and plot the expected number of O ring failures using equation $n * pi$
+
+As we can see, the confidence interval is much wider at low temperatures than high ones. This is because the variance at the lower temperture is much higher, which is due to a lack of data. 
+
+```{r}
+# Plot expected number of failures 
+curve(expr = 6 * predict(object = bm2,  newdata = data.frame(Temp = x), type = "response"), xlim = c(31,81),
+      xlab = "Temperature", ylab = "Expected Number of Failure")
+```
+
+It seems like the expected number of failures starts dropping in the mid 50's (temperature) and approaches zero at around 80 degrees.
+
+## Applying binomial logistic regression
+
+Now that we have confirmed that at least one O-ring failed during the launch, we can go one step further and determine the probability of how many of the O-ring did fail. We will again employ the base case with no explanatory variable as a reference point (m1), separate out Temp (m2) and Pressure (m3, m4) in their own respective model to better understand the effect, and combined them as well (m5, m6) to see which model can best estimate the probability of how many O-rings failed.
+
+```{r warning=FALSE}
+m1 <- glm(formula = O.ring/Number ~ 1, weights=Number, family=binomial, data=d)
+m2 <- glm(formula = O.ring/Number ~ Temp, weights=Number, family=binomial, data=d)
+m3 <- glm(formula = O.ring/Number ~ Pressure, weights=Number, family=binomial, data=d)
+m4 <- glm(formula = O.ring/Number ~ factor(Pressure), weights=Number, family=binomial, data=d)
+m5 <- glm(formula = O.ring/Number ~ Temp + Pressure, weights=Number, family=binomial, data=d)
+m6 <- glm(formula = O.ring/Number ~ Temp + factor(Pressure), weights=Number, family=binomial, data=d)
+stargazer(m1, m2, m3, m4, m5, m6, header=FALSE, type='text')
+```
+
+Running the likelihood ratio test, we can see that the model with only Temp as the explanatory variable performs the best. We will utilize this to make our prediction at the probability of how many O-rings failed during the launch once the assumptions are met. 
+
+```{r}
+anova(m1, m2, m3, m4, m5, m6, test='Chi')
+```
+
+Since we already addressed most of the assumptions in the previous section, we perform a quick check on the remaining assumptions that require validation, which as can be seen below, passed.
+
+```{r fig.show='hold', fig.align='center', out.width='49%'}
+# assumption test: linearity
+pi <- predict(m2, data.frame(Temp=d$Temp), type='response')
+plot(x=d$Temp, xlab='Temperature (F)', xlim=c(temp.min,temp.max), 
+     y=log(pi/(1-pi)), ylab='logit', 
+     panel.first=grid(col="gray", lty="dotted"), pch=20); 
+# assumption test: influential points
+abs(rstandard(bm2)) > 3
+```
+
