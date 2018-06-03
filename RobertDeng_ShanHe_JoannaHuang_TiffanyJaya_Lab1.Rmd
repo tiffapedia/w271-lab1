@@ -134,7 +134,7 @@ summary(aov(Pressure ~ O.ring, data=d))
 
 **Why not linear regression model**
 
-So far, our exploration of the data gives us an intuition that there are more launches tested in warmer climate and in higher leak-check pressure. We would then like to extrapolate from these observations the likelihood that temperature and leak-check pressure play in causing the O-rings to fail on January 28th, the day of the launch. 
+**(Answer 3B)** So far, our exploration of the data gives us an intuition that there are more launches tested in warmer climate and in higher leak-check pressure. We would then like to extrapolate from these observations the likelihood that temperature and leak-check pressure play in causing the O-rings to fail on January 28th, the day of the launch. 
 
 One way we can predict the number of O-ring failure in the physical condition of the launch (31°F and 200 psi) is to employ the linear regression model. 
 
@@ -254,7 +254,7 @@ abs(rstandard(bm2)) > 3
 
 4. There is no high intercorrelations or multicollinearity among explanatory variables. Since our chosen model only has one explanatory variable, Temp, we have also met this assumption.
 5. The outcome variable does not separate the predictor variable completely. We can validate this does not happen because R will give a warning message when it does. In addition, the standard error for the Temp coefficient is not extremely large, and looking at the relationship between the outcome variable and the explanatory variable in the bivariate analysis, we can see that there are failures still occuring at warmer temperature as well as cooler ones. 
-<<<<<<< HEAD
+
 6. <span style='color:red'>**(Answer 4A)**</span> Each O-ring is independent of each launch. This is an important assumption because it ensures that the logistic regression is interpretable for any O-ring failure and any flight. Specifically, it ensures one failure does not conditionally increase the probability of failure for subsequent O-rings or O-rings on subsequent flights. However, there are details from the case that potentially invalidate this claim. 
 
 Pg 947 mentions increases in pressure tests from 50 to 200 psi which could have caused “blow-holes” leading to thermal distress and O-ring failure. This shows that previous flights might have had more durable O-rings compared to flights after. To alleviate these concerns, additional analysis to investigate the effect of increased pressure on thermal distress (blow holes, erosion) would be needed to show that there wasn't any signficant impact.
@@ -312,7 +312,7 @@ get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, gi
 
 By using bootstraping to resample the observed data, we were able to calculate a confidence interval of our sample estimates without assuming any specific distribution for the sample estimates. Although such confidence intervals can also be calculated using Wald intervals, such method is prone of violation to the assumption of a normal distribution. 
 
-To interpret our model, as we can see below, for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between 1.02 and 1.56. 
+**(Answer 3A)** To interpret our model, as we can see below, for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between 1.02 and 1.56. 
 
 ```{r}
 # odds
