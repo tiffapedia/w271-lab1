@@ -165,6 +165,8 @@ We build models that separate out Temp (bm2) and Pressure (bm3, bm4) to better u
 
 In addition, we build bm5 and bm6 to see how Temp and Pressure together affects the probability of at least one O-ring failing. 
 
+To check if a quadratic term is needed in the model for temperature, we add bm7 into our analysis. As we later discussed in the validation of assumption section, since Temp has a linear relationship with the logit of the outcome, the quadratic term is not necessary. We validated by seeing that adding a quadratic term did not improve the model.
+
 ```{r warning=FALSE}
 bm1 <- glm(formula = O.ring > 0 ~ 1, family=binomial, data=d)
 bm2 <- glm(formula = O.ring > 0 ~ Temp, family=binomial, data=d)
@@ -172,7 +174,8 @@ bm3 <- glm(formula = O.ring > 0 ~ Pressure, family=binomial, data=d)
 bm4 <- glm(formula = O.ring > 0 ~ factor(Pressure), family=binomial, data=d)
 bm5 <- glm(formula = O.ring > 0 ~ Temp + Pressure, family=binomial, data=d)
 bm6 <- glm(formula = O.ring > 0 ~ Temp + factor(Pressure), family=binomial, data=d)
-stargazer(bm1, bm2, bm3, bm4, bm5, bm6, header=FALSE, type='text')
+bm7 <- glm(formula = O.ring > 0 ~ Temp + I(Temp^2), family=binomial, data=d)
+stargazer(bm1, bm2, bm3, bm4, bm5, bm6, bm7, header=FALSE, type='text')
 ```
 
 From the statistical output displayed above, it appears that Temp is a better explanatory variable for the dependent variable than Pressure. We validate our intuition by performing a likelihood ratio test.
@@ -239,7 +242,7 @@ Before we base our prediction on this model, we should verify whether or not the
 Logistic regression method assumes that 
 
 1. The dependent variable is binary with a conditional distribution that follows a Bernoulli distribution, which we met since a success occurs when there is at least one O-ring failing (O.ring > 0) and a failure occurs when there are no O-rings failing (O.ring == 0).
-2. There is a linear relationship between the predictor variable, in this case Temp, and the logit of the outcome. By plotting out the predicted probability, we can see that this assumption is also met. The current model is sufficient, and we do not need to apply a 
+2. There is a linear relationship between the predictor variable, in this case Temp, and the logit of the outcome. By plotting out the predicted probability, we can see that this assumption is also met. The current model is sufficient, and we do not need to apply a quadratic term to it. 
 
 ```{r fig.show='hold', fig.align='center', out.width='49%'}
 pi <- predict(bm2, data.frame(Temp=d$Temp), type='response')
@@ -262,10 +265,55 @@ abs(rstandard(bm2)) > 3
   a. 
   b. 
 
-Thanks to the assumption check we have made, we can continue predicting the probability of at least one O.ring failure with greater certainty.  Based on our logistic regression model bm2, the probability of at least O-rings failing when they launch the Challenger at 31°F is approximately $\hat{\pi_i} \approx 0.99.$ If they have waited until 72 °F as suggested, it would have reduced the probability of at least one O-ring failing to approximately 0.16. 
+Thanks to the assumption check we have made, we can continue predicting the probability of at least one O-ring failure with greater certainty.  Based on our logistic regression model bm2, the probability of at least one O-ring failing when they launch the Challenger at 31°F is approximately $\hat{\pi_i} \approx 0.99$ with 90% confidence interval of (0.999613, 1.000000) found using parametric bootstrap. If they have waited until 72 °F as suggested, it would have reduced the probability of at least one O-ring failing to approximately 0.16 with the parametric bootstrap's 90% confidence interval of (0.3968449, 0.9763451). 
 
-```{r}
+```{r warning=FALSE}
 predict(bm2, data.frame(Temp=c(temp.launch, rec.temp)), type='response')
+
+get.pi.hat.star <- function(given.temps, given.model, given.formula, given.weights, sample.size, total.O.rings, which.temp){
+  
+  # simulate dataset from the given model
+  Temp <- sample(given.temps, sample.size, replace=TRUE)
+  pi.hat <- predict(object=given.model, newdata=data.frame(Temp=Temp), type='response')
+  O.ring <- rbinom(n=sample.size, size=total.O.rings, pi.hat)
+  Number <- replicate(sample.size, total.O.rings)
+  newdata <- data.frame(Temp=Temp, O.ring=O.ring, Number=Number)
+  
+  # estimate new model from dataset
+  estimated.model <- glm(formula=given.formula, weights=given.weights, family=binomial(link='logit'), data=newdata)
+  
+  # predict pi.hat.star at which.temp
+  return(predict(object=estimated.model, newdata=data.frame(Temp=which.temp), type='response'))
+}
+
+get.ci.w.parametric.bootstrap <- function(given.temps, given.model, given.formula, given.weights, sample.size, total.O.rings, which.temp, num.datasets, percent.ci) {
+  mult.pi.hat.star <- replicate(num.datasets, get.pi.hat.star(given.temps, given.model, given.formula, given.weights, sample.size, total.O.rings, which.temp))
+  return(quantile(mult.pi.hat.star, c((1 - percent.ci)/2, percent.ci + (1 - percent.ci)/2)))
+}
+
+# provide the variables to pass in to bootstrap
+# 1. sample size = 23
+sample.size <- nrow(d) 
+
+# 2. total number of O-rings = 6
+total.O.rings <- unique(d$Number) 
+
+# 3. provide the model's formula
+given.formula <- paste('O.ring > 0 ~ Temp')
+given.weights <- NULL
+
+# 4. provide the model with the formula
+given.model <- glm(formula=given.formula, family=binomial(link='logit'), data=d)
+
+# 5. use parametric bootstrap to compute 90% confidence intervals
+# for temperature at launch: 31 F
+get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, given.weights,
+                              sample.size, total.O.rings, which.temp=temp.launch,
+                              num.datasets=10000, percent.ci=.9)
+# for recommended temperature to launch: 72 F
+get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, given.weights,
+                              sample.size, total.O.rings, which.temp=rec.temp,
+                              num.datasets=10000, percent.ci=.9)
 ```
 
 This is unfortunate because we know that for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between 1.02 and 1.56. If only they had waited until the suggested temperature, the catastrophic accident could have been prevented.
