@@ -8,6 +8,8 @@ output:
   number_sections: true
 fontsize: 11pt
 geometry: margin=1in
+header-includes: 
+  - \usepackage{color}
 ---
 
 ```{r message=FALSE}
@@ -232,7 +234,7 @@ With a p-value of 0.0320, there is sufficient evidence to conclude that outside 
 
 Before we base our prediction on this model, we should verify whether or not the assumption for using logistic regression model is met. Not doing so will result in a similar situation that the Challenger faced: forming decision based on incorrect findings. 
 
-Logistic regression method assumes that 
+**(Answer 5D: assumptions)** Logistic regression method assumes that 
 
 1. The dependent variable is binary with a conditional distribution that follows a Bernoulli distribution, which we met since a success occurs when there is at least one O-ring failing (O.ring > 0) and a failure occurs when there are no O-rings failing (O.ring == 0).
 2. There is a linear relationship between the predictor variable, in this case Temp, and the logit of the outcome. By plotting out the predicted probability, we can see that this assumption is also met. The current model is sufficient, and we do not need to apply a quadratic term to it. 
@@ -259,10 +261,10 @@ abs(rstandard(bm2)) > 3
 
 Pg 947 mentions increases in pressure tests from 50 to 200 psi which could have caused “blow-holes” leading to thermal distress and O-ring failure. This shows that previous flights might have had more durable O-rings compared to flights after. To alleviate these concerns, additional analysis to investigate the effect of increased pressure on thermal distress (blow holes, erosion) would be needed to show that there wasn't any signficant impact.
 
-<span style='color:red'>**(Answer 5D and 5E)**</span> This model meets the necessary assumptions and we can continue predicting the probability of at least one O-ring failure with greater certainty. Based on our logistic regression model bm2, the probability of at least one O-ring failing when they launch the Challenger at 31°F is approximately $\hat{\pi_i} \approx 0.99$ with 90% confidence interval of (0.99, 1.00) found using parametric bootstrap. If they have waited until 72 °F as suggested, it would have reduced the probability of at least one O-ring failure to approximately 0.16 with 90% confidence interval of (0.3968449, 0.9763451) found using the same parametric bootstrap. 
+<span style='color:red'>**(Answer 5D and 5E)**</span> This model meets the necessary assumptions and we can continue predicting the probability of at least one O-ring failure with greater certainty. Based on our logistic regression model bm2, the probability of at least one O-ring failing when they launch the Challenger at 31°F is approximately $\hat{\pi_i} \approx 0.99$ with 90% confidence interval of (0.99, 1.00) found using parametric bootstrap. If they have waited until 72 °F as suggested, it would have reduced the probability of at least one O-ring failure to within the approximate 90% confidence interval of (0.39, 0.98) found using the same parametric bootstrap. 
 
 ```{r warning=FALSE}
-predict(bm2, data.frame(Temp=c(temp.launch, rec.temp)), type='response')
+predict(bm2, data.frame(Temp=c(temp.launch)), type='response')
 
 get.pi.hat.star <- function(given.temps, given.model, given.formula, given.weights, sample.size, total.O.rings, which.temp){
   
@@ -312,7 +314,7 @@ get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, gi
 
 By using bootstraping to resample the observed data, we were able to calculate a confidence interval of our sample estimates without assuming any specific distribution for the sample estimates. Although such confidence intervals can also be calculated using Wald intervals, such method is prone of violation to the assumption of a normal distribution. 
 
-**(Answer 3A)** To interpret our model, as we can see below, for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between 1.02 and 1.56. 
+**(Answer 3A)** To interpret our model, as we can see below, for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between a factor of 1.02 and 1.56. 
 
 ```{r}
 # odds
@@ -323,12 +325,13 @@ get.glm.se <- function(model) sqrt(diag(vcov(model)))
 c(exp(-bm2.b1 - 1.96 * get.glm.se(bm2)['Temp']), exp(-bm2.b1 + 1.96 * get.glm.se(bm2)['Temp']))
 ```
 
-<span style='color:red'>**(Answer 5B and 5C)**</span>  With a selected model bm2, we can then investigate how the estimated probability changes over different tempratures. 
+<span style='color:red'>**(Answer 5B and 5C)**</span>  With the selected model bm2, we can then investigate how the estimated probability changes over different temperatures. 
 
 ```{r fig.show='hold', fig.align='center', out.width='49%'}
 # Plot estimated pi
-curve(predict(object=bm2, data.frame(Temp=x), type="response"), xlim = c(31,81),
-      xlab = "Temperature", ylab = "Estimated Probability of Failure")
+curve(predict(object = bm2, newdata = data.frame(Temp=x), type = "response"), xlim = c(temp.min,temp.max),
+      main="Estimated Probability of Failure vs Temperature", xlab = "Temperature", 
+      ylab = "Estimated Probability of Failure")
 # Create C.I. function
 conf.int <- function(newdata, mod, alpha) {
   linear.pred <- predict(object=mod, newdata=newdata, type='link', se = TRUE)
@@ -340,22 +343,22 @@ conf.int <- function(newdata, mod, alpha) {
 }
 # Plot confidence interval
 curve(expr = conf.int(newdata=data.frame(Temp=x), mod = bm2, alpha = 0.05)$lower,
-                      col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
+                      col='blue', lty = 'dotdash', add = TRUE, xlim = c(temp.min,temp.max))
 curve(expr = conf.int(newdata=data.frame(Temp=x), mod = bm2, alpha = 0.05)$upper,
-                      col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
+                      col='blue', lty = 'dotdash', add = TRUE, xlim = c(temp.min,temp.max))
 # Plot expected number of failures 
-curve(expr = 6 * predict(object = bm2,  newdata = data.frame(Temp = x), type = "response"), xlim = c(31,81),
-      xlab = "Temperature", ylab = "Expected Number of Failure", main='Expected Number of Failure vs. Temp')
+curve(expr = 6 * predict(object = bm2, newdata = data.frame(Temp = x), type = "response"), xlim = c(31,81),
+      xlab = "Temperature", ylab = "Expected Number of Failure", main='Expected Number of Failure vs Temperature')
 ```
 
 Since we assume this to be a binomial distribution, we can also compute and plot the expected number of O-ring failures using equation $n * pi$
 
-As we can see, the confidence interval is much wider at low temperatures than high ones. This is because the variance at the lower temperture is much higher, which is due to a lack of data. 
+As we can see, the 95% Wald confidence interval is much wider at low temperatures than high ones. This is because the variance at the lower temperture is much higher, which is due to a lack of data. 
 
 It seems like the expected number of failures starts dropping in the mid 50's (temperature) and approaches zero at around 80 degrees.
 
 **Conclusion**
 
-From the observed data sample, our analysis showed that the temperature at launch was a significant factor in predicting the O ring failure. We chose to use a logistic regression model after explaining the inadequacy of using a linear regression in this case. With our chosen model, $logit(Y) = \beta_0 + \beta_1 * Temp$, we saw that for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between 1.02 and 1.56. We also used bootstraping which estimated the probability of O ring failure at launch when it's 31 F to be between 0.99 and 1.00. According to our model, such probability when it's 72 F would be in the range between 0.39 and 0.97.
+From the observed data sample, our analysis showed that the temperature at launch was a significant factor in predicting the O ring failure. We chose to use a logistic regression model after explaining the inadequacy of using a linear regression in this case. With our chosen model, $logit(Y) = \beta_0 + \beta_1 * Temp$, we saw that for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between a factor of 1.02 and 1.56. We also used bootstraping which estimated the probability of O ring failure at launch when it's 31 F to be between 0.99 and 1.00. According to our model, such probability when it's 72 F would be in the range between 0.39 and 0.97.
 
 
