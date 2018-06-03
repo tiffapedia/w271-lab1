@@ -177,15 +177,31 @@ bm7 <- glm(formula = O.ring > 0 ~ Temp + I(Temp^2), family=binomial, data=d)
 stargazer(bm1, bm2, bm3, bm4, bm5, bm6, bm7, header=FALSE, type='text')
 ```
 
-From the statistical output displayed above, it appears that Temp is a better explanatory variable for the dependent variable than Pressure. We confirm our intuition by performing a likelihood ratio test of the base case (bm1) against models that separate out Temp (bm2) and Pressure (bm3, bm4).
+From the statistical output displayed above, it appears that Temp is a better explanatory variable for the dependent variable than Pressure. We confirmed our intuition by performing a likelihood ratio test of the base case (bm1) against model with only Temp (bm2) and only Pressure (bm3, bm4) and found that bm2 is the better model among the three. We then compared bm2 against bm5 and bm6 to see how the addition of Pressure may improve the model. As it turns out, Pressure is not a statistically significant addition to bm2.
 
 ```{r}
 # bm1 vs bm2, bm3, bm4
 c(anova(bm1, bm2, test='Chi')[[5]][2], anova(bm1, bm3, test='Chi')[[5]][2], anova(bm1, bm4, test='Chi')[[5]][2])
 # bm2 vs bm5, bm6
+c(anova(bm2, bm5, test='Chi')[[5]][2], anova(bm2, bm6, test='Chi')[[5]][2])
 ```
 
-The test shows that Temp is a statistically significant addition to the model, more so by itself than combined with Pressure as the secondary explanatory variable. In the latter section, we will discuss why Pressure might not be a good explanatory variable. For now, we conclude that bm2 is the best estimated model for $\pi_i$ where $\pi_i$ represents the probability of at least one O-ring failing. 
+Before we remove Pressure as one of the explanatory variables, we take a look at the residual deviance of the models. The residual deviance gives us insight into how much the estimated probabilities from our models of interest deviate from the observed proportions of success in the model. The lower the deviance, the better the fit. A difference of 1.53 and 2.10 between the residual deviance of bm2 and bm5 and respecitvely bm2 and bm6 demonstrate there may be a small effect of pressure present. However, the difference is not significant as the LRT have shown because in general, as more variables are added, the deviance value decreases. 
+
+```{r}
+c(deviance(bm2), deviance(bm5), deviance(bm2)-deviance(bm5))
+c(deviance(bm2), deviance(bm6), deviance(bm2)-deviance(bm6))
+```
+
+For this reason, we apply AIC to assess the quality of our models with consideration of penalizing more complexity. Since our model has a lower AIC, this further confirms our choice to remove Pressure as an explanatory variable.
+
+```{r}
+c(bm2$aic, bm5$aic, bm6$aic)
+```
+
+The potential issue of removing Pressure is that given a larger dataset with more data points at each psi level, there may be an effect that is not represented within our current model.
+
+For this reason, we conclude that bm2 is the best estimated model for $\pi_i$ where $\pi_i$ represents the probability of at least one O-ring failing. 
 
 $$\begin{aligned}
 P(Y_i = 1 | x_i) & = \frac{e^{\beta_0 + \beta_1 x_i}}{1 + e^{\beta_0 + \beta_1 x_i}} \\
@@ -203,38 +219,6 @@ summary(bm2)
 ```
 
 With a p-value of 0.0320, there is sufficient evidence to conclude that outside temperature at the time of the launch does affect the probability of at least one O-ring failing.
-
-To further confirm that Pressure is not a significant explanatory variable, we look at the deviance and AIC of the models.
-
-```{r}
-# Deviance
-print(deviance(bm2))
-
-print(deviance(bm5))
-
-print(deviance(bm2)-deviance(bm5))
-```
-
-Looking at the residual deviance, we can see how much the estimated probabilities from our model deviates from the observed proportions of success in the model. Thus, the lower the deviance, the better the fit. Given that deviance decreases as you add more variables, looking at the deviance value itself does not demonstrate significance. Thus we need to test the significance of the difference between deviance.
-
-```{r}
-anova(bm2,bm5,test='Chi')
-```
-
-According to the likelihood ratio test, Pressure is not a statistically significant addition to the model.
-
-AIC is another way to assess the quality of our models with consideration of penalizing more complexity. Since our model has a lower AIC, this further confirms our choice to remove Pressure as an explanatory variable.
-
-```{r}
-# AIC
-bm2$aic
-
-bm5$aic
-```
-
-Thus, we conclude that bm2 is the best estimated model for $\pi_i$ where $\pi_i$ represents the probability of at least one O-ring failing. (edited)
-
-The potential issue of removing Pressure is that given a larger dataset with more data points at each psi level, there may be an effect that is not represented within our current model.
 
 ### Validating logistic regression assumptions
 
