@@ -329,12 +329,11 @@ c(exp(-bm2.b1 - 1.96 * get.glm.se(bm2)['Temp']), exp(-bm2.b1 + 1.96 * get.glm.se
 
 With a selected model bm2, we can then investigate how the estimated probability changes over different tempratures. 
 
-```{r}
+```{r fig.show='hold', fig.align='center', out.width='49%'}
 # Plot estimated pi
 curve(expr = predict(object = bm2, newdata = data.frame(Temp = x), type = "response"),
                                                                         xlim = c(31,81),
       xlab = "Temperature", ylab = "Estimated Probability of Failure")
-
 # Create C.I. function
 conf.int <- function(newdata, mod, alpha) {
   linear.pred <- predict(object = mod, newdata= newdata, type = 'link', se = TRUE)
@@ -344,23 +343,19 @@ conf.int <- function(newdata, mod, alpha) {
   CI.pi.upper <- exp(CI.lin.pred.upper) / (1+exp(CI.lin.pred.upper))
   list(lower = CI.pi.lower, upper = CI.pi.upper)
 }
-
 # Plot confidence interval
 curve(expr = conf.int(newdata=data.frame(Temp=x), mod = bm2, alpha = 0.05)$lower,
                       col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
 curve(expr = conf.int(newdata=data.frame(Temp=x), mod = bm2, alpha = 0.05)$upper,
                       col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
+# Plot expected number of failures 
+curve(expr = 6 * predict(object = bm2,  newdata = data.frame(Temp = x), type = "response"), xlim = c(31,81),
+      xlab = "Temperature", ylab = "Expected Number of Failure")
 ```
 
 Since we assume this to be a binomial distribution, we can also compute and plot the expected number of O ring failures using equation $n * pi$
 
 As we can see, the confidence interval is much wider at low temperatures than high ones. This is because the variance at the lower temperture is much higher, which is due to a lack of data. 
-
-```{r}
-# Plot expected number of failures 
-curve(expr = 6 * predict(object = bm2,  newdata = data.frame(Temp = x), type = "response"), xlim = c(31,81),
-      xlab = "Temperature", ylab = "Expected Number of Failure")
-```
 
 It seems like the expected number of failures starts dropping in the mid 50's (temperature) and approaches zero at around 80 degrees.
 
