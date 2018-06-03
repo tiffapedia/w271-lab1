@@ -247,6 +247,43 @@ get.glm.se <- function(model) sqrt(diag(vcov(model)))
 c(exp(-bm2.b1 - 1.96 * get.glm.se(bm2)['Temp']), exp(-bm2.b1 + 1.96 * get.glm.se(bm2)['Temp']))
 ```
 
+With a selected model bm2, we can then investigate how the estimated probability changes over different tempratures. 
+
+```{r}
+# Plot estimated pi
+curve(expr = predict(object = bm2, newdata = data.frame(Temp = x), type = "response"),
+                                                                        xlim = c(31,81),
+      xlab = "Temperature", ylab = "Estimated Probability of Failure")
+
+# Create C.I. function
+conf.int <- function(newdata, mod, alpha) {
+  linear.pred <- predict(object = mod, newdata= newdata, type = 'link', se = TRUE)
+  CI.lin.pred.lower <- linear.pred$fit - qnorm(p = 1-alpha/2) * linear.pred$se
+  CI.lin.pred.upper <- linear.pred$fit + qnorm(p = 1-alpha/2) * linear.pred$se
+  CI.pi.lower <- exp(CI.lin.pred.lower) / (1+exp(CI.lin.pred.lower))
+  CI.pi.upper <- exp(CI.lin.pred.upper) / (1+exp(CI.lin.pred.upper))
+  list(lower = CI.pi.lower, upper = CI.pi.upper)
+}
+
+# Plot confidence interval
+curve(expr = conf.int(newdata=data.frame(Temp=x), mod = bm2, alpha = 0.05)$lower,
+                      col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
+curve(expr = conf.int(newdata=data.frame(Temp=x), mod = bm2, alpha = 0.05)$upper,
+                      col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
+```
+
+Since we assume this to be a binomial distribution, we can also compute and plot the expected number of O ring failures using equation $n * pi$
+
+As we can see, the confidence interval is much wider at low temperatures than high ones. This is because the variance at the lower temperture is much higher, which is due to a lack of data. 
+
+```{r}
+# Plot expected number of failures 
+curve(expr = 6 * predict(object = bm2,  newdata = data.frame(Temp = x), type = "response"), xlim = c(31,81),
+      xlab = "Temperature", ylab = "Expected Number of Failure")
+```
+
+It seems like the expected number of failures starts dropping in the mid 50's (temperature) and approaches zero at around 80 degrees.
+
 ## Applying binomial logistic regression
 
 Now that we have confirmed that at least one O-ring failed during the launch, we can go one step further and determine the probability of how many of the O-ring did fail. We will again employ the base case with no explanatory variable as a reference point (m1), separate out Temp (m2) and Pressure (m3, m4) in their own respective model to better understand the effect, and combined them as well (m5, m6) to see which model can best estimate the probability of how many O-rings failed.
