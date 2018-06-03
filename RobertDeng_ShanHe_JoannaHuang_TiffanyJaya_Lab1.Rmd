@@ -323,7 +323,7 @@ get.glm.se <- function(model) sqrt(diag(vcov(model)))
 c(exp(-bm2.b1 - 1.96 * get.glm.se(bm2)['Temp']), exp(-bm2.b1 + 1.96 * get.glm.se(bm2)['Temp']))
 ```
 
-**Answer 5B and 5C** With a selected model bm2, we can then investigate how the estimated probability changes over different tempratures. 
+<span style='color:red'>**(Answer 5B and 5C)**</span>  With a selected model bm2, we can then investigate how the estimated probability changes over different tempratures. 
 
 ```{r fig.show='hold', fig.align='center', out.width='49%'}
 # Plot estimated pi
@@ -356,6 +356,6 @@ It seems like the expected number of failures starts dropping in the mid 50's (t
 
 **Conclusion**
 
-From the observed data sample, our analyses showed that the temperature at launch was a significant factor in predicting the O ring failure. We chose to use a logistic regression model after explaining the inadequacy of using a linear regression in this case. And with our chosen model, $logit(Y) = \beta_0 + \beta_1 * Temp$, we saw that for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between 1.02 and 1.56. We also used bootstraping which estimated the probability of O ring failure at launch when it's 31 F to be between 0.9996 and 1.0000. According to our model, such probability when it's 72 F would be in the range between 0.3968 and 0.9763.
+From the observed data sample, our analysis showed that the temperature at launch was a significant factor in predicting the O ring failure. We chose to use a logistic regression model after explaining the inadequacy of using a linear regression in this case. With our chosen model, $logit(Y) = \beta_0 + \beta_1 * Temp$, we saw that for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between 1.02 and 1.56. We also used bootstraping which estimated the probability of O ring failure at launch when it's 31 F to be between 0.99 and 1.00. According to our model, such probability when it's 72 F would be in the range between 0.39 and 0.97.
 
 
