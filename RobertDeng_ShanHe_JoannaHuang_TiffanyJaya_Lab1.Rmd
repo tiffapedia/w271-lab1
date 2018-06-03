@@ -18,7 +18,7 @@ opts_chunk$set(tidy.opts=list(width.cutoff=70), tidy=TRUE)
 # remove all objects from current workspace
 rm(list = ls())
 # set seed number to reproduce results
-set.seed(101)
+set.seed(1)
 # load data
 d <- read.csv("./dataset/challenger.csv", header=TRUE, sep=",")
 # set min and max for temp, temp at launch, recommended temp to launch
@@ -152,19 +152,25 @@ abline(lm(O.ring ~ Pressure, data=d)); axis(side=2, at=0:2)
 plot(lm(O.ring ~ Temp, data=d), which=c(1,2))
 ```
 
-As shown from the fitted model above, linear regression is an inadequate model for prediction. It fails to meet the assumption of homogeneity of variance and linear relation (see residual vs fitted) as well as the normal distribution of residuals (see QQ plot). In reality, it is not possible for the number of O-ring failure to be negative at higher temperature or lower psi or to be a fraction of a failure because an O-ring either fails or does not fail. Knowing that the O.ring variable is discrete in nature rather than continuous, a better alternative is to use the logistic regression model. 
+As shown from the fitted model above, linear regression is an inadequate model for prediction. It fails to meet the assumption of homogeneity of variance and linear relation (see residual vs fitted) as well as the normal distribution of residuals (see QQ plot). In reality, it is not possible for the number of O-ring failure to be negative at higher temperature or lower psi or to be a fraction of a failure because an O-ring either fails or does not fail. Knowing that the O.ring variable is more discrete in nature than continuous, a better alternative is to use the logistic regression model. 
 
 **Applying logistic regression model for a binary response**
 
-If we simply wanted to know the probability of at least one O-ring failing, for example, if we wanted to confirm whether or not there is at least one O-ring failure happening during the day of the launch, then we can use the logistic regression model with a binary response (success or failure) to predict that probability. A success occurs when there is at least one O-ring failing (O.ring > 0), and a failure occurs when there are no O-rings failing (O.ring == 0). Unlike linear regression model, logistic regression model will bound the predicted probability within zero and one, which eliminates the possibility of getting nonsensical results. 
+If we simply wanted to know the probability of at least one O-ring failing, then we can use the logistic regression model with a binary response (success or failure) to predict that probability. A success occurs when there is at least one O-ring failing (O.ring > 0), and a failure occurs when there are no O-rings failing (O.ring == 0). Unlike linear regression model, logistic regression model binds the predicted probability within zero and one, which eliminates the possibility of getting nonsensical results. 
 
-**(Answer 4B and 5A)** To ensure that there is a point of reference to compare the effect of the determinants onto the outcome, we employ a base case that takes in no explanatory variable which we will refer to as bm1. 
+For our analyses, we decided to choose the binary logistic regression model over a binomial logistic regression model for mainly two reasons:
 
-We build models that separate out Temp (bm2) and Pressure (bm3, bm4) to better understand their effect individually on the likelihood of at least one O-ring failure. The reason why we separate the model for Pressure further into bm3 and bm4 is because we want to see the effect pressure had collectively on the response variable and at the same time the effect it had when the air pressure changed for every updated leak-check procedure.
+1. We were curious to see the contributing factor for odds that any O-ring failure occurs while we didn’t neccessarily care for the exact proportion of O-ring that failed
 
-In addition, we build bm5 and bm6 to see how Temp and Pressure together affects the probability of at least one O-ring failing. 
+2. A binomial response model assumes the independence between O-rings on different joints while a binary response model is robust against any joint dependence
 
-**(Answer 5F)** To check if a quadratic term is needed in the model for temperature, we add bm7 into our analysis. As we later discussed in the validation of assumption section, since Temp has a linear relationship with the logit of the outcome, the quadratic term is not necessary. It comes to no surprise then that adding a quadratic term did not improve the model.
+<span style='color:red'>**(Answer 4B and 5A)**</span To ensure that there is a point of reference to compare the effect of the determinants onto the outcome, we employ a base case that takes in no explanatory variable which we will refer to as bm1. 
+
+We build models that separate out Temp (bm2) and Pressure (bm3, bm4) to better understand their effect individually on the likelihood of at least one O-ring failure. The reason why we separate the model for Pressure further into bm3 and bm4 is because we want to see the effect pressure had collectively on the response variable and at the same time the effect it had when the air pressure changed for the updated leak-check procedure.
+
+In addition, we build bm5 and bm6 to see how Temp and Pressure together affect the probability of at least one O-ring failing. 
+
+<span style='color:red'>**(Answer 5F)**</span To check if a quadratic term is needed in the model for temperature, we add bm7 into our analysis. As we later discussed in the validation of assumption section, since Temp has a linear relationship with the logit of the outcome, the quadratic term is not necessary. We validated by seeing that adding a quadratic term did not improve the model.
 
 ```{r warning=FALSE}
 bm1 <- glm(formula = O.ring > 0 ~ 1, family=binomial, data=d)
@@ -177,7 +183,7 @@ bm7 <- glm(formula = O.ring > 0 ~ Temp + I(Temp^2), family=binomial, data=d)
 stargazer(bm1, bm2, bm3, bm4, bm5, bm6, bm7, header=FALSE, type='text')
 ```
 
-From the statistical output displayed above, it appears that Temp is a better explanatory variable for the dependent variable than Pressure. We confirmed our intuition by performing a likelihood ratio test of the base case (bm1) against model with only Temp (bm2) and only Pressure (bm3, bm4) and found that bm2 is the better model among the three. We then compared bm2 against bm5 and bm6 to see how the addition of Pressure may improve the model. As it turns out, Pressure is not a statistically significant addition to bm2.
+<span style='color:red'>**(Answer 4C)**</span From the statistical output displayed above, it appears that Temp is a better explanatory variable for the dependent variable than Pressure. We confirmed our intuition by performing a likelihood ratio test of the base case (bm1) against model with only Temp (bm2) and only Pressure (bm3, bm4) and found that bm2 is the better model among the three. We then compared bm2 against bm5 and bm6 to see how the addition of Pressure may improve the model. As it turns out, Pressure is not a statistically significant addition to bm2.
 
 ```{r}
 # bm1 vs bm2, bm3, bm4
@@ -186,7 +192,7 @@ c(anova(bm1, bm2, test='Chi')[[5]][2], anova(bm1, bm3, test='Chi')[[5]][2], anov
 c(anova(bm2, bm5, test='Chi')[[5]][2], anova(bm2, bm6, test='Chi')[[5]][2])
 ```
 
-Before we remove Pressure as one of the explanatory variables, we take a look at the residual deviance of the models. The residual deviance gives us insight into how much the estimated probabilities from our models of interest deviate from the observed proportions of success in the model. The lower the deviance, the better the fit. A difference of 1.53 and 2.10 between the residual deviance of bm2 and bm5 and respecitvely bm2 and bm6 demonstrate there may be a small effect of pressure present. However, the difference is not significant as the LRT have shown because in general, as more variables are added, the deviance value decreases. 
+**(Answer 4D)** Before we remove Pressure as one of the explanatory variables, we take a look at the residual deviance of the models. The residual deviance gives us insight into how much the estimated probabilities from our models of interest deviate from the observed proportions of success in the model. The lower the deviance, the better the fit. A difference of 1.53 and 2.10 between the residual deviance of bm2 and bm5 and respecitvely bm2 and bm6 demonstrate there may be a small effect of pressure present. However, the difference is not significant as the LRT have shown because in general, as more variables are added, the deviance value decreases. 
 
 ```{r}
 c(deviance(bm2), deviance(bm5), deviance(bm2)-deviance(bm5))
@@ -220,9 +226,9 @@ summary(bm2)
 
 With a p-value of 0.0320, there is sufficient evidence to conclude that outside temperature at the time of the launch does affect the probability of at least one O-ring failing.
 
-### Validating logistic regression assumptions
+**Validating logistic regression assumptions**
 
-Before we base our prediction on this model, we should verify whether or not the assumption for using logistic regression model is met. Not doing so will result in a similar situation that Challenger faced: forming decision based on incorrect findings. 
+Before we base our prediction on this model, we should verify whether or not the assumption for using logistic regression model is met. Not doing so will result in a similar situation that the Challenger faced: forming decision based on incorrect findings. 
 
 Logistic regression method assumes that 
 
@@ -246,11 +252,20 @@ abs(rstandard(bm2)) > 3
 
 4. There is no high intercorrelations or multicollinearity among explanatory variables. Since our chosen model only has one explanatory variable, Temp, we have also met this assumption.
 5. The outcome variable does not separate the predictor variable completely. We can validate this does not happen because R will give a warning message when it does. In addition, the standard error for the Temp coefficient is not extremely large, and looking at the relationship between the outcome variable and the explanatory variable in the bivariate analysis, we can see that there are failures still occuring at warmer temperature as well as cooler ones. 
-6. Each O-ring is independent of each launch. This is important because it ensures the logistic regression is interpretable for any O-ring failure and any flight. Specifically, it ensures one failure does not conditionally increase the probability of failure for subsequent O-rings or O-rings on subsequent flights. The details from the case that potentially invalidate this claim are as follows.
+6. <span style='color:red'>**(Answer 4A)**</span> Each O-ring is independent of each launch. This is an important assumption because it ensures that the logistic regression is interpretable for any O-ring failure and any flight. Specifically, it ensures one failure does not conditionally increase the probability of failure for subsequent O-rings or O-rings on subsequent flights. However, there are details from the case that potentially invalidate this claim. 
 
-Pg 947 mentions increases in pressure tests from 50 to 200 which could have caused “blow-holes” leading to thermal distress and O-ring failure. This shows that previous flights might have had more durable O-rings compared to flights after. To alleviate these concerns, addition analysis to investigate the effect of increased pressure on thermal distress (blow holes, erosion) could show that there wasn't an signficant impact.
+Pg 947 mentions increases in pressure tests from 50 to 200 psi which could have caused “blow-holes” leading to thermal distress and O-ring failure. This shows that previous flights might have had more durable O-rings compared to flights after. To alleviate these concerns, additional analysis to investigate the effect of increased pressure on thermal distress (blow holes, erosion) would be needed to show that there wasn't any signficant impact.
 
-Thanks to the assumption check we have made, we can continue predicting the probability of at least one O-ring failure with greater certainty.  Based on our logistic regression model bm2, the probability of at least one O-ring failing when they launch the Challenger at 31°F is approximately 0.99 with 90% confidence interval of (0.999613, 1.000000) found using parametric bootstrap. If they have waited until 72 °F as suggested, it would have reduced the probability of at least one O-ring failing to approximately 0.16 with the parametric bootstrap's 90% confidence interval of (0.3968449, 0.9763451). 
+<span style='color:red'>**(Answer 5D and 5E)**</span> This model meets the necessary assumptions and we can continue predicting the probability of at least one O-ring failure with greater certainty. Based on our logistic regression model bm2, the probability of at least one O-ring failing when they launch the Challenger at 31°F is approximately $\hat{\pi_i} \approx 0.99$ with 90% confidence interval of (0.99, 1.00) found using parametric bootstrap. If they have waited until 72 °F as suggested, it would have reduced the probability of at least one O-ring failure to approximately 0.16 with 90% confidence interval of (0.3968449, 0.9763451) found using the same parametric bootstrap. 
+
+
+```{r}
+get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, given.weights,
+                              sample.size, total.O.rings, which.temp=72,
+                              num.datasets=10000, percent.ci=.9)
+```
+
+
 
 ```{r warning=FALSE}
 predict(bm2, data.frame(Temp=c(temp.launch, rec.temp)), type='response')
@@ -318,12 +333,11 @@ With a selected model bm2, we can then investigate how the estimated probability
 
 ```{r fig.show='hold', fig.align='center', out.width='49%'}
 # Plot estimated pi
-curve(expr = predict(object = bm2, newdata = data.frame(Temp = x), type = "response"),
-                                                                        xlim = c(31,81),
+curve(predict(object=bm2, data.frame(Temp=x), type="response"), xlim = c(31,81),
       xlab = "Temperature", ylab = "Estimated Probability of Failure")
 # Create C.I. function
 conf.int <- function(newdata, mod, alpha) {
-  linear.pred <- predict(object = mod, newdata= newdata, type = 'link', se = TRUE)
+  linear.pred <- predict(object=mod, newdata=newdata, type='link', se = TRUE)
   CI.lin.pred.lower <- linear.pred$fit - qnorm(p = 1-alpha/2) * linear.pred$se
   CI.lin.pred.upper <- linear.pred$fit + qnorm(p = 1-alpha/2) * linear.pred$se
   CI.pi.lower <- exp(CI.lin.pred.lower) / (1+exp(CI.lin.pred.lower))
@@ -340,7 +354,7 @@ curve(expr = 6 * predict(object = bm2,  newdata = data.frame(Temp = x), type = "
       xlab = "Temperature", ylab = "Expected Number of Failure")
 ```
 
-Since we assume this to be a binomial distribution, we can also compute and plot the expected number of O ring failures using equation $n * pi$
+Since we assume this to be a binomial distribution, we can also compute and plot the expected number of O-ring failures using equation $n * pi$
 
 As we can see, the confidence interval is much wider at low temperatures than high ones. This is because the variance at the lower temperture is much higher, which is due to a lack of data. 
 
