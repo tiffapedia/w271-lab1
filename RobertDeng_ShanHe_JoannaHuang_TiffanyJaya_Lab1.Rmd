@@ -64,7 +64,7 @@ axis(1, at=seq(min(d$O.ring), max(d$O.ring)))
 lines(density(d$O.ring), col='blue', lwd=2)
 ```
 
-Since the disaster occurred as a result of O-ring failure, the O.ring variable will be the variable that we are trying to predict. From the density plot of the sample, we can approximate that an event of no O-ring failure is more than twice as likely to occur than a single O-ring failure and seven times more likely to occur than a second O-ring failure. 
+Since the disaster occurred as a result of O-ring failure, the O.ring variable will be the variable that we are trying to predict. From the density plot of the sample, we see an event of no O-ring failure twice as many times in the dataset than a single O-ring failure and seven times more than a second O-ring failure. 
 
 **Univariate analysis of Temp**
 ```{r fig.show='hold', fig.align='center', out.width='49%'}
@@ -104,6 +104,8 @@ plot(main='Temperature vs Number of O-rings Failure',
 abline(h=0, v=c(avg.temp.failure, avg.temp.success, avg.temp, temp.launch), col=c('black', 'red', 'green', 'gray', 'blue')); axis(side=2, at=0:2)
 ```
 
+When we performed a bivariate analysis of Temp and O.ring variables, we started to notice that if we only looked at the average temperature of flights with at least one O-ring failure (red line), the number of O-rings failing in cold weather is approximately similar to that in the warm weather. It was these specific data points used by two staff members as a reasoning to launch Challenger at 31°F temperature (blue line). But if we took into consideration all previous flights, the average temperature of all 23 launches (gray line) or the average temperature of all successful launches (green line) give us clue that O-rings seem to perform better in warmer temperature. 
+
 When we performed a bivariate analysis of Temp and O.ring variables, we started to notice that if we only looked at the average temperature of flights with at least one O-ring failure (red line), the number of O-rings failing in cold weather is approximately similar to that in the warm weather. It was these specific data points used by two staff members as a reasoning to launch Challenger at 31°F temperature (blue line). But if we took into consideration all previous flights, the average temperature of all 23 launches (gray line) or the average temperature of all successful launches (green line) give us clue that O-rings seem to perform better in warmer temperature.  
 
 ```{r}
@@ -124,7 +126,7 @@ labs(title = 'Number of O-Rings Failure at Different Pressure Levels',
      x='Number of O-rings Failure', y='Count')  
 ```
 
-Plotting with facets reveals that most O.ring failures occurred at 200 psi. Given that there are more variables in the 200 psi level than in the 50 and 100 psi levels, we may need to be more cautious when interpreting the model at low pressure levels. To investigate pressures between failed and successful O-ring states, an one-way anova test reveals a p-value of 0.188 in which it fails to reject the null hypothesis of no difference between the 3 pressure states. Pressure might potentially not be a strong candidate as an explanatory variable for O-rings failure.
+Plotting with facets reveals that most O.ring failures occurred at 200 psi. Given that there are more variables in the 200 psi level than in the 50 and 100 psi levels, we may need to be more cautious when interpreting the model at low pressure levels. To investigate pressures between failed and successful O-ring states, a one-way anova test reveals a p-value of 0.188 in which it fails to reject the null hypothesis of no difference between the 3 pressure states. Hence, Pressure may not be a strong candidate as an explanatory variable for O-rings failure.
 
 ```{r}
 summary(aov(Pressure ~ O.ring, data=d))
@@ -164,13 +166,13 @@ For our analyses, we decided to choose the binary logistic regression model over
 
 2. A binomial response model assumes the independence between O-rings on different joints while a binary response model is robust against any joint dependence
 
-<span style='color:red'>**(Answer 4B and 5A)**</span To ensure that there is a point of reference to compare the effect of the determinants onto the outcome, we employ a base case that takes in no explanatory variable which we will refer to as bm1. 
+<span style='color:red'>**(Answer 4B and 5A)**</span> To ensure that there is a point of reference to compare the effect of the determinants onto the outcome, we employ a base case that takes in no explanatory variable which we will refer to as bm1. 
 
 We build models that separate out Temp (bm2) and Pressure (bm3, bm4) to better understand their effect individually on the likelihood of at least one O-ring failure. The reason why we separate the model for Pressure further into bm3 and bm4 is because we want to see the effect pressure had collectively on the response variable and at the same time the effect it had when the air pressure changed for the updated leak-check procedure.
 
 In addition, we build bm5 and bm6 to see how Temp and Pressure together affect the probability of at least one O-ring failing. 
 
-<span style='color:red'>**(Answer 5F)**</span To check if a quadratic term is needed in the model for temperature, we add bm7 into our analysis. As we later discussed in the validation of assumption section, since Temp has a linear relationship with the logit of the outcome, the quadratic term is not necessary. We validated by seeing that adding a quadratic term did not improve the model.
+<span style='color:red'>**(Answer 5F)**</span> To check if a quadratic term is needed in the model for temperature, we add bm7 into our analysis. As we later discussed in the validation of assumption section, since Temp has a linear relationship with the logit of the outcome, the quadratic term is not necessary. We validated by seeing that adding a quadratic term did not improve the model.
 
 ```{r warning=FALSE}
 bm1 <- glm(formula = O.ring > 0 ~ 1, family=binomial, data=d)
@@ -183,7 +185,7 @@ bm7 <- glm(formula = O.ring > 0 ~ Temp + I(Temp^2), family=binomial, data=d)
 stargazer(bm1, bm2, bm3, bm4, bm5, bm6, bm7, header=FALSE, type='text')
 ```
 
-<span style='color:red'>**(Answer 4C)**</span From the statistical output displayed above, it appears that Temp is a better explanatory variable for the dependent variable than Pressure. We confirmed our intuition by performing a likelihood ratio test of the base case (bm1) against model with only Temp (bm2) and only Pressure (bm3, bm4) and found that bm2 is the better model among the three. We then compared bm2 against bm5 and bm6 to see how the addition of Pressure may improve the model. As it turns out, Pressure is not a statistically significant addition to bm2.
+<span style='color:red'>**(Answer 4C)**</span> From the statistical output displayed above, it appears that Temp is a better explanatory variable for the dependent variable than Pressure. We confirmed our intuition by performing a likelihood ratio test of the base case (bm1) against model with only Temp (bm2) and only Pressure (bm3, bm4) and found that bm2 is the better model among the three. We then compared bm2 against bm5 and bm6 to see how the addition of Pressure may improve the model. As it turns out, Pressure is not a statistically significant addition to bm2.
 
 ```{r}
 # bm1 vs bm2, bm3, bm4
@@ -192,7 +194,7 @@ c(anova(bm1, bm2, test='Chi')[[5]][2], anova(bm1, bm3, test='Chi')[[5]][2], anov
 c(anova(bm2, bm5, test='Chi')[[5]][2], anova(bm2, bm6, test='Chi')[[5]][2])
 ```
 
-**(Answer 4D)** Before we remove Pressure as one of the explanatory variables, we take a look at the residual deviance of the models. The residual deviance gives us insight into how much the estimated probabilities from our models of interest deviate from the observed proportions of success in the model. The lower the deviance, the better the fit. A difference of 1.53 and 2.10 between the residual deviance of bm2 and bm5 and respecitvely bm2 and bm6 demonstrate there may be a small effect of pressure present. However, the difference is not significant as the LRT have shown because in general, as more variables are added, the deviance value decreases. 
+<span style='color:red'>**(Answer 4D)**</span>  Before we remove Pressure as one of the explanatory variables, we take a look at the residual deviance of the models. The residual deviance gives us insight into how much the estimated probabilities from our models of interest deviate from the observed proportions of success in the model. The lower the deviance, the better the fit. A difference of 1.53 and 2.10 between the residual deviance of bm2 and bm5 and respecitvely bm2 and bm6 demonstrate there may be a small effect of pressure present. However, the difference is not significant as the LRT have shown because in general, as more variables are added, the deviance value decreases. 
 
 ```{r}
 c(deviance(bm2), deviance(bm5), deviance(bm2)-deviance(bm5))
@@ -252,20 +254,12 @@ abs(rstandard(bm2)) > 3
 
 4. There is no high intercorrelations or multicollinearity among explanatory variables. Since our chosen model only has one explanatory variable, Temp, we have also met this assumption.
 5. The outcome variable does not separate the predictor variable completely. We can validate this does not happen because R will give a warning message when it does. In addition, the standard error for the Temp coefficient is not extremely large, and looking at the relationship between the outcome variable and the explanatory variable in the bivariate analysis, we can see that there are failures still occuring at warmer temperature as well as cooler ones. 
+<<<<<<< HEAD
 6. <span style='color:red'>**(Answer 4A)**</span> Each O-ring is independent of each launch. This is an important assumption because it ensures that the logistic regression is interpretable for any O-ring failure and any flight. Specifically, it ensures one failure does not conditionally increase the probability of failure for subsequent O-rings or O-rings on subsequent flights. However, there are details from the case that potentially invalidate this claim. 
 
 Pg 947 mentions increases in pressure tests from 50 to 200 psi which could have caused “blow-holes” leading to thermal distress and O-ring failure. This shows that previous flights might have had more durable O-rings compared to flights after. To alleviate these concerns, additional analysis to investigate the effect of increased pressure on thermal distress (blow holes, erosion) would be needed to show that there wasn't any signficant impact.
 
 <span style='color:red'>**(Answer 5D and 5E)**</span> This model meets the necessary assumptions and we can continue predicting the probability of at least one O-ring failure with greater certainty. Based on our logistic regression model bm2, the probability of at least one O-ring failing when they launch the Challenger at 31°F is approximately $\hat{\pi_i} \approx 0.99$ with 90% confidence interval of (0.99, 1.00) found using parametric bootstrap. If they have waited until 72 °F as suggested, it would have reduced the probability of at least one O-ring failure to approximately 0.16 with 90% confidence interval of (0.3968449, 0.9763451) found using the same parametric bootstrap. 
-
-
-```{r}
-get.ci.w.parametric.bootstrap(given.temps=d$Temp, given.model, given.formula, given.weights,
-                              sample.size, total.O.rings, which.temp=72,
-                              num.datasets=10000, percent.ci=.9)
-```
-
-
 
 ```{r warning=FALSE}
 predict(bm2, data.frame(Temp=c(temp.launch, rec.temp)), type='response')
@@ -329,7 +323,7 @@ get.glm.se <- function(model) sqrt(diag(vcov(model)))
 c(exp(-bm2.b1 - 1.96 * get.glm.se(bm2)['Temp']), exp(-bm2.b1 + 1.96 * get.glm.se(bm2)['Temp']))
 ```
 
-With a selected model bm2, we can then investigate how the estimated probability changes over different tempratures. 
+**Answer 5B and 5C** With a selected model bm2, we can then investigate how the estimated probability changes over different tempratures. 
 
 ```{r fig.show='hold', fig.align='center', out.width='49%'}
 # Plot estimated pi
@@ -351,7 +345,7 @@ curve(expr = conf.int(newdata=data.frame(Temp=x), mod = bm2, alpha = 0.05)$upper
                       col='blue', lty = 'dotdash', add = TRUE, xlim = c(31,81))
 # Plot expected number of failures 
 curve(expr = 6 * predict(object = bm2,  newdata = data.frame(Temp = x), type = "response"), xlim = c(31,81),
-      xlab = "Temperature", ylab = "Expected Number of Failure")
+      xlab = "Temperature", ylab = "Expected Number of Failure", main='Expected Number of Failure vs. Temp')
 ```
 
 Since we assume this to be a binomial distribution, we can also compute and plot the expected number of O-ring failures using equation $n * pi$
@@ -362,9 +356,6 @@ It seems like the expected number of failures starts dropping in the mid 50's (t
 
 **Conclusion**
 
-From the observed data sample, our analyses showed that the temperature at launch was a significant factor in predicting the O ring failure. We chose to use a logistic regression model after explaining the inadequacy of using a linear regression in this case. And with our chosen model, $logit(Y) = \beta_0 + \beta_1 * Temp$, we saw that for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between 1.02 and 1.56. We also used bootstraping which estimated the probability of O ring failure at launch when it's 31 F to be between 0.9996 and 1.0000. According to our model, such probability when it's 72 F would be in the range between 0.3968 and 0.9763. 
-
-
-
+From the observed data sample, our analyses showed that the temperature at launch was a significant factor in predicting the O ring failure. We chose to use a logistic regression model after explaining the inadequacy of using a linear regression in this case. And with our chosen model, $logit(Y) = \beta_0 + \beta_1 * Temp$, we saw that for every 1 degree Fahrenheit decrease in temperature, the odds of the O-rings failing for a given launch increases by 26% with the true population effect between 1.02 and 1.56. We also used bootstraping which estimated the probability of O ring failure at launch when it's 31 F to be between 0.9996 and 1.0000. According to our model, such probability when it's 72 F would be in the range between 0.3968 and 0.9763.
 
 
